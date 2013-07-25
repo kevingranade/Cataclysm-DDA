@@ -4297,7 +4297,7 @@ int player::throw_range(int pos)
  return ret;
 }
 
-int player::ranged_dex_mod(bool return_stat_effect)
+int player::ranged_dex_mod(bool return_stat_effect) const
 {
   // Stat window shows stat effects on based on current stat
     const int dex = (return_stat_effect ? get_dex() : get_dex());
@@ -4306,7 +4306,7 @@ int player::ranged_dex_mod(bool return_stat_effect)
     return 12 - dex;
 }
 
-int player::ranged_per_mod(bool return_stat_effect)
+int player::ranged_per_mod(bool return_stat_effect) const
 {
   // Stat window shows stat effects on based on current stat
  const int per = (return_stat_effect ? get_per() : get_per());
@@ -4315,7 +4315,7 @@ int player::ranged_per_mod(bool return_stat_effect)
  return 12 - per;
 }
 
-int player::throw_dex_mod(bool return_stat_effect)
+int player::throw_dex_mod(bool return_stat_effect) const
 {
   // Stat window shows stat effects on based on current stat
  int dex = (return_stat_effect ? get_dex() : get_dex());
