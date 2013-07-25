@@ -885,7 +885,7 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
     int width  = getmaxx(w_messages);
     int top    = sideStyle ? getbegy(w_messages) : (getbegy(w_minimap) + getmaxy(w_minimap));
     int left   = getbegx(w_messages);
-    WINDOW *w_target = newwin(height, width, top, left);
+    WINDOW* w_target = newwin(height, width, top, left);
     draw_border(w_target);
     mvwprintz(w_target, 0, 2, c_white, "< ");
     if (!relevent) { // currently targetting vehicle to refill with fuel
@@ -893,22 +893,19 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
     } else {
         if (relevent == &u.weapon && relevent->is_gun()) {
             if(relevent->has_flag("RELOAD_AND_SHOOT")) {
-                wprintz(w_target, c_red, _("Shooting %s from %s"), u.weapon.curammo->nname(1).c_str(),
-                        u.weapon.tname().c_str());
-                ;
+                wprintz(w_target, c_red, _("Shooting %s from %s"),
+                        u.weapon.curammo->nname(1).c_str(), u.weapon.tname().c_str());
             } else if(relevent->has_flag("NO_AMMO")) {
                 wprintz(w_target, c_red, _("Firing %s"), u.weapon.tname().c_str());
             } else {
                 wprintz(w_target, c_red, _("Firing %s (%d)"), // - %s (%d)",
-                        u.weapon.tname().c_str(),// u.weapon.curammo->name.c_str(),
-                        u.weapon.charges);
+                        u.weapon.tname().c_str(), u.weapon.charges);
             }
         } else {
             wprintz(w_target, c_red, _("Throwing %s"), relevent->tname().c_str());
         }
     }
     wprintz(w_target, c_white, " >");
-    /* Annoying clutter @ 2 3 4. */
     int text_y = getmaxy(w_target) - 4;
     if (is_mouse_enabled()) {
         --text_y;
@@ -917,9 +914,11 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
               _("Move cursor to target with directional keys"));
     if (relevent) {
         mvwprintz(w_target, text_y++, 1, c_white,
-                  _("'<' '>' Cycle targets; 'f' or '.' to fire"));
+                  _("'<' '>' Cycle targets; 'f' or Enter to fire"));
         mvwprintz(w_target, text_y++, 1, c_white,
                   _("'0' target self; '*' toggle snap-to-target"));
+        mvwprintz(w_target, text_y++, 1, c_white,
+                  _("'.' to steady your aim."));
     }
 
     if (is_mouse_enabled()) {
@@ -1033,7 +1032,9 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
         }
         wrefresh(w_target);
         wrefresh(w_terrain);
+        u.disp_status(w_status, w_status2);
         wrefresh(w_status);
+        wrefresh(w_status2);
         refresh();
 
         input_context ctxt("TARGET");
@@ -1046,13 +1047,13 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
         ctxt.register_action("FIRE");
         ctxt.register_action("NEXT_TARGET");
         ctxt.register_action("PREV_TARGET");
+        ctxt.register_action("AIM");
         ctxt.register_action("CENTER");
         ctxt.register_action("TOGGLE_SNAP_TO_TARGET");
         ctxt.register_action("HELP_KEYBINDINGS");
         ctxt.register_action("QUIT");
 
-        const std::string &action = ctxt.handle_input();
-
+        const std::string& action = ctxt.handle_input();
 
         tarx = 0;
         tary = 0;
