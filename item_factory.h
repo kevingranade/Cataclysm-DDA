@@ -1,9 +1,6 @@
 #ifndef _ITEM_FACTORY_H_
 #define _ITEM_FACTORY_H_
 
-#include <string>
-#include <vector>
-#include <map>
 #include "game.h"
 #include "itype.h"
 #include "item.h"
@@ -11,7 +8,10 @@
 #include "picojson.h"
 #include "catajson.h"
 #include "item_group.h"
-#include "iuse.h" 
+#include "iuse.h"
+#include <string>
+#include <vector>
+#include <map>
 
 typedef std::string Item_tag;
 typedef std::vector<item> Item_list;
@@ -27,7 +27,7 @@ public:
     //Setup
     Item_factory();
     void init();
-    void init(game* main_game);
+    void init(game* main_game) throw (std::string);
 
     //Intermediary Methods - Will probably be removed at final stage
     itype* find_template(Item_tag id);
@@ -35,6 +35,7 @@ public:
     itype* template_from(Item_tag group_tag);
     const Item_tag random_id();
     const Item_tag id_from(Item_tag group_tag);
+    bool group_contains_item(Item_tag group_tag, Item_tag item);
 
     //Production methods
     item create(Item_tag id, int created_at);
@@ -50,18 +51,17 @@ private:
     std::map<Item_tag, Item_group*> m_template_groups;
 
     //json data handlers
-    void load_item_templates();
-    void load_item_templates_from(const std::string file_name);
-    void load_item_groups_from(const std::string file_name);
+    void load_item_templates() throw (std::string);
+    void load_item_templates_from(const std::string file_name) throw (std::string);
+    void load_item_groups_from(game *g, const std::string file_name) throw (std::string);
 
     nc_color color_from_string(std::string color);
     Use_function use_from_string(std::string name);
+    void tags_from_json(catajson tag_list, std::set<std::string> &tags);
     unsigned flags_from_json(catajson flags, std::string flag_type="");
     void set_material_from_json(Item_tag new_id, catajson mats);
     bool is_mod_target(catajson targets, std::string weapon);
-    material material_from_tag(Item_tag new_id, Item_tag index);
     phase_id phase_from_tag(Item_tag name);
-    ammotype ammo_from_string(std::string ammo);
 
     //two convenience functions that just call into set_bitmask_by_string
     void set_flag_by_string(unsigned& cur_flags, std::string new_flag, std::string flag_type);
@@ -71,14 +71,8 @@ private:
 
     //iuse stuff
     std::map<Item_tag, Use_function> iuse_function_list;
-    //flags stuff
-    std::map<Item_tag, unsigned> item_flags_list;
     //techniques stuff
     std::map<Item_tag, unsigned> techniques_list;
-    //ammo stuff
-    std::map<Item_tag, unsigned> ammo_flags_list;
-    //ammo effects
-    std::map<Item_tag, unsigned> ammo_effects_list;
     //bodyparts
     std::map<Item_tag, unsigned> bodyparts_list;
 };

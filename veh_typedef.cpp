@@ -39,14 +39,14 @@ void game::init_vehicles()
     if (pi < 0) debugmsg("init_vehicles: '%s' part '%s'(%d) can't be installed to %d,%d", veh->name.c_str(), vpart_list[id].name, veh->parts.size(), mdx, mdy); }
 
     //        name
-    VEHICLE ("Bicycle");
+    VEHICLE (_("Bicycle"));
     //    o
     //    #
     //    o
 
     //   dx, dy,    part_id
     PART (0, 0,     vp_frame_v2);
-    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_saddle);
     PART (0, 0,     vp_controls);
     PART (0, 0,     vp_engine_foot_crank);
     PART (1, 0,     vp_wheel_bicycle);
@@ -54,7 +54,7 @@ void game::init_vehicles()
     PART (-1, 0,    vp_cargo_box);
 
     //        name
-    VEHICLE ("Motorcycle Chassis");
+    VEHICLE (_("Motorcycle Chassis"));
     //    o
     //    ^
     //    #
@@ -62,12 +62,12 @@ void game::init_vehicles()
 
     //   dx, dy,    part_id
     PART (0, 0,     vp_frame_v2);
-    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_saddle);
     PART (1, 0,     vp_frame_handle);
     PART (1, 0,     vp_fuel_tank_gas);
     PART (-1, 0,    vp_wheel_motorbike);
     //        name
-    VEHICLE ("Motorcycle");
+    VEHICLE (_("Motorcycle"));
     //    o
     //    ^
     //    #
@@ -75,7 +75,7 @@ void game::init_vehicles()
 
     //   dx, dy,    part_id
     PART (0, 0,     vp_frame_v2);
-    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_saddle);
     PART (0, 0,     vp_controls);
     PART (0, 0,     vp_engine_gas_v2);
     PART (1, 0,     vp_frame_handle);
@@ -86,14 +86,14 @@ void game::init_vehicles()
     PART (-1, 0,    vp_cargo_box);
 
     //        name
-    VEHICLE ("Quad Bike");
+    VEHICLE (_("Quad Bike"));
     //   0^0
     //    #
     //   0H0
 
     //   dx, dy,    part_id
     PART (0, 0,     vp_frame_v2);
-    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_saddle);
     PART (0, 0,     vp_controls);
     PART (1, 0,     vp_frame_cover);
     PART (1, 0,     vp_engine_gas_v2);
@@ -109,14 +109,14 @@ void game::init_vehicles()
     PART (-1, 1,    vp_wheel_motorbike);
 
         //        name
-    VEHICLE ("Quad Bike Chassis");
+    VEHICLE (_("Quad Bike Chassis"));
     //   0^0
     //    #
     //   0H0
 
     //   dx, dy,    part_id
     PART (0, 0,     vp_frame_v2);
-    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_saddle);
     PART (1, 0,     vp_frame_cover);
     PART (-1,0,     vp_frame_h);
     PART (1, -1,    vp_wheel_motorbike);
@@ -124,7 +124,7 @@ void game::init_vehicles()
     PART (-1, 1,    vp_wheel_motorbike);
 
     //        name
-    VEHICLE ("Car");
+    VEHICLE (_("Car"));
     //   o--o
     //   |""|
     //   +##+
@@ -183,7 +183,7 @@ void game::init_vehicles()
     PART (-3, 2,     vp_wheel);
 
     //        name
-    VEHICLE ("Car Chassis");
+    VEHICLE (_("Car Chassis"));
     //   o--o
     //   |""|
     //   +##+
@@ -213,11 +213,11 @@ void game::init_vehicles()
     PART (-3, -1,    vp_wheel);
     PART (-3, 2,     vp_wheel);
     //        name
-    VEHICLE ("Flatbed Truck");
+    VEHICLE (_("Flatbed Truck"));
     // 0-^-0
     // |"""|
     // +###+
-    // |---|
+    // |"""|
     // |HHH|
     // 0HHH0
 
@@ -255,9 +255,12 @@ void game::init_vehicles()
     PART (2, -2,    vp_wheel_wide);
     PART (2,  2,    vp_wheel_wide);
 
-    PART (-1, -1,   vp_board_h);
-    PART (-1, 0,    vp_board_h);
-    PART (-1, 1,    vp_board_h);
+    PART (-1, -1,   vp_frame_h);
+    PART (-1, -1,   vp_window);
+    PART (-1, 0,    vp_frame_h);
+    PART (-1, 0,    vp_window);
+    PART (-1, 1,    vp_frame_h);
+    PART (-1, 1,    vp_window);
     PART (-1, -2,   vp_board_b);
     PART (-1, -2,   vp_fuel_tank_gas);
     PART (-1, 2,    vp_board_n);
@@ -281,7 +284,7 @@ void game::init_vehicles()
     PART (-3, -2,   vp_wheel_wide);
     PART (-3, 2,    vp_wheel_wide);
 
-	VEHICLE ("Semi Truck");
+	VEHICLE (_("Semi Truck"));
 	// semitrucksleeper
     // |=^^=|
     // O-HH-O
@@ -377,7 +380,9 @@ void game::init_vehicles()
 	PART (4, -1, vp_frame_v2);
 	PART (4, -1, vp_engine_gas_v8);
 	PART (4, 1, vp_frame_h);
+	PART (4, 1, vp_head_light);
 	PART (4, -2, vp_frame_h);
+	PART (4, -2, vp_head_light);
 	PART (4, 2, vp_wheel_wide);
 	PART (4, -3, vp_wheel_wide);
 
@@ -395,7 +400,7 @@ void game::init_vehicles()
 	PART (5, 2, vp_frame_u);
 	PART (5, -3, vp_frame_y);
 
-	VEHICLE ("Truck Trailer");
+	VEHICLE (_("Truck Trailer"));
 	// trucktrailer
     // |----|
     // |-++-|
@@ -480,7 +485,7 @@ void game::init_vehicles()
 	PART (5, 2, vp_board_u);
 	PART (5, -3, vp_board_y);
 
-        VEHICLE ("Wagon");
+        VEHICLE (_("Wagon"));
     // HHH
     // HHH
     // HHH
@@ -495,7 +500,7 @@ void game::init_vehicles()
         PART (-1, 1, vp_frame_v2);
         PART (-1, -1, vp_frame_v2);
 
-	VEHICLE ("Beetle");
+	VEHICLE (_("Beetle"));
 	// vwbug
     // oHHo
     // |--|
@@ -538,7 +543,7 @@ void game::init_vehicles()
 	PART (2, -1, vp_wheel);
 	PART (2, 2, vp_wheel);
 
-	VEHICLE ("Bubble Car");
+	VEHICLE (_("Bubble Car"));
     //  |-|
     // |o#o|
     // |###|
@@ -603,7 +608,7 @@ void game::init_vehicles()
 	PART (-2, -1, vp_frame_b);
 	PART (-2, -1, vp_window);
 
-	VEHICLE ("Golf Cart");
+	VEHICLE (_("Golf Cart"));
 	// Yamaha golf cart
     // oo
     // --
@@ -627,7 +632,7 @@ void game::init_vehicles()
 	PART (-1, 0, vp_wheel_small);
 	PART (-1, 1, vp_wheel_small);
 
-	VEHICLE ("Scooter");
+	VEHICLE (_("Scooter"));
 	// Vespa scooter
     // o
     // ^
@@ -636,7 +641,8 @@ void game::init_vehicles()
 
     // dx, dy, part_id
 	PART (0, 0, vp_frame_handle);
-	PART (0, 0, vp_seat);
+	PART (0, 0, vp_head_light);
+	PART (0, 0, vp_saddle);
 	PART (0, 0, vp_engine_gas_1cyl);
 	PART (0, 0, vp_fuel_tank_gas);
 	PART (0, 0, vp_controls);
@@ -645,7 +651,7 @@ void game::init_vehicles()
 
 	PART (-1, 0, vp_wheel_small);
 
-	VEHICLE ("Military Cargo Truck");
+	VEHICLE (_("Military Cargo Truck"));
 	// Army M35A2 2.5 ton cargo truck
     // |^^^|
     // O-H-O
@@ -721,7 +727,9 @@ void game::init_vehicles()
 
 	PART (3, 0, vp_frame_v2);
 	PART (3, -1, vp_frame_h);
+	PART (3, -1, vp_head_light);
 	PART (3, 1, vp_frame_h);
+	PART (3, 1, vp_head_light);
 	PART (3, 0, vp_engine_gas_v8);
 	PART (3, 0, vp_steel_plate);
 //	switch for hydrogen fuel or use both and change (3,0) to (3,1) and (3,-1)
@@ -762,7 +770,7 @@ void game::init_vehicles()
 	PART (-4, -2, vp_frame_v);
 	PART (-4, 2, vp_frame_v);
 
-	VEHICLE ("Schoolbus");
+	VEHICLE (_("Schoolbus"));
 	// Schoolbus
 	// O=^=O
 	// """""
@@ -920,6 +928,179 @@ void game::init_vehicles()
 	PART ( -8, 1, vp_window);
 	PART ( -8, 2, vp_frame_h);
 	PART ( -8, 2, vp_window);
+
+    //        name
+    VEHICLE (_("Car"));
+    //   o--o
+    //   |""|
+    //   +##+
+    //   +##+
+    //   #HH#
+    //   o++o
+
+    //   dx, dy,    part_id
+    PART (0, 0,     vp_frame_v2);
+    PART (0, 0,     vp_seat);
+    PART (0, 0,     vp_seatbelt);
+    PART (0, 0,     vp_controls);
+    PART (0, 0,     vp_roof);
+    PART (0, 1,     vp_frame_v2);
+    PART (0, 1,     vp_seat);
+    PART (0, 1,     vp_seatbelt);
+    PART (0, 1,     vp_roof);
+    PART (0, -1,    vp_door);
+    PART (0, 2,     vp_door);
+    PART (-1, 0,     vp_frame_v2);
+    PART (-1, 0,     vp_seat);
+    PART (-1, 0,     vp_seatbelt);
+    PART (-1, 0,     vp_roof);
+    PART (-1, 1,     vp_frame_v2);
+    PART (-1, 1,     vp_seat);
+    PART (-1, 1,     vp_seatbelt);
+    PART (-1, 1,     vp_roof);
+    PART (-1, -1,    vp_door);
+    PART (-1, 2,     vp_door);
+    PART (1, 0,     vp_frame_h);
+    PART (1, 0,     vp_window);
+    PART (1, 0,     vp_head_light);
+    PART (1, 1,     vp_frame_h);
+    PART (1, 1,     vp_window);
+    PART (1, 1,     vp_head_light);
+    PART (1, -1,    vp_frame_v);
+    PART (1, 2,     vp_frame_v);
+    PART (2, 0,     vp_frame_h);
+    PART (2, 0,     vp_engine_motor_large);
+    PART (2, 1,     vp_frame_h);
+    PART (2, -1,    vp_wheel);
+    PART (2, 2,     vp_wheel);
+    PART (-2, 0,     vp_frame_v);
+    PART (-2, 0,     vp_cargo_trunk);
+    PART (-2, 0,     vp_roof);
+    PART (-2, 1,     vp_frame_v);
+    PART (-2, 1,     vp_cargo_trunk);
+    PART (-2, 1,     vp_roof);
+    PART (-2, -1,    vp_board_v);
+    PART (-2, -1,    vp_fuel_tank_batt);
+    PART (-2, -1,    vp_solar_panel);
+    PART (-2, 2,     vp_board_v);
+    PART (-2, 2,     vp_fuel_tank_batt);
+    PART (-2, 2,     vp_solar_panel);
+    PART (-3, -1,    vp_wheel);
+    PART (-3, 0,     vp_door);
+    PART (-3, 1,     vp_door);
+    PART (-3, 2,     vp_wheel);
+
+     VEHICLE ("RV");
+    // - 0 +
+    // O---O 2
+    // |"""| 1
+    // +#=#+ 0
+    // |-+-| -1
+    // |#H=+ -2
+    // |OHO| -3
+    // |OHO| -4
+    // |#H&| -5
+    // +---+ -6
+
+    // dx, dy, part_id
+    PART (0, 0, vp_frame_v2);
+    PART (0, 0, vp_aisle_h2);
+    PART (0, 0, vp_roof);
+    PART (0, 0, vp_engine_gas_v6);
+    PART (0, 1, vp_frame_v2);
+    PART (0, 1, vp_seat);
+    PART (0, 1, vp_roof);
+    PART (0, 1, vp_seatbelt);
+    PART (0, -1, vp_frame_v2);
+    PART (0, -1, vp_seat);
+    PART (0, -1, vp_roof);
+    PART (0, -1, vp_controls);
+    PART (0, -1, vp_seatbelt);
+    PART (0, 2, vp_door);
+    PART (0, -2, vp_door);
+
+    PART (1, 0, vp_frame_v2);
+    PART (1, 0, vp_window);
+    PART (1, 1, vp_frame_v2);
+    PART (1, 1, vp_window);
+    PART (1, -1, vp_frame_v2);
+    PART (1, -1, vp_window);
+    PART (1, 2, vp_frame_v);
+    PART (1, -2, vp_frame_v);
+
+    PART (2, 0, vp_frame_h);
+    PART (2, 0, vp_head_light);
+    PART (2, 1, vp_frame_h);
+    PART (2, 1, vp_head_light);
+    PART (2, -1, vp_frame_h);
+    PART (2, -1, vp_head_light);
+    PART (2, 2, vp_wheel_wide);
+    PART (2, -2, vp_wheel_wide);
+
+    PART (-1, 0, vp_door_i);
+    PART (-1, 1, vp_board_h);
+    PART (-1, -1, vp_board_h);
+    PART (-1, 2, vp_board_v);
+    PART (-1, -2, vp_board_v);
+
+    PART (-2, 1, vp_frame_v2);
+    PART (-2, 1, vp_roof);
+    PART (-2, 1, vp_aisle_h2);
+    PART (-2, 0, vp_frame_v2);
+    PART (-2, 0, vp_roof);
+    PART (-2, 0, vp_aisle_v2);
+    PART (-2, -1, vp_frame_v2);
+    PART (-2, -1, vp_roof);
+    PART (-2, -1, vp_seat);
+    PART (-2, 2, vp_door);
+    PART (-2, -2, vp_board_v);
+
+    PART (-3, 0, vp_frame_v2);
+    PART (-3, 0, vp_roof);
+    PART (-3, 0, vp_aisle_v2);
+    PART (-3, 1, vp_wheel_wide_under);
+    PART (-3, 1, vp_cargo_trunk);
+    PART (-3, 1, vp_roof);
+    PART (-3, -1, vp_wheel_wide_under);
+    PART (-3, -1, vp_cargo_trunk);
+    PART (-3, -1, vp_roof);
+    PART (-3, 2, vp_board_v);
+    PART (-3, -2, vp_board_v);
+    PART (-3, -2, vp_fuel_tank_water);
+
+    PART (-4, 0, vp_frame_v2);
+    PART (-4, 0, vp_roof);
+    PART (-4, 0, vp_aisle_v2);
+    PART (-4, 1, vp_wheel_wide_under);
+    PART (-4, 1, vp_cargo_trunk);
+    PART (-4, 1, vp_roof);
+    PART (-4, -1, vp_wheel_wide_under);
+    PART (-4, -1, vp_cargo_trunk);
+    PART (-4, -1, vp_roof);
+    PART (-4, 2, vp_board_v);
+    PART (-4, -2, vp_board_v);
+    PART (-4, -2, vp_fuel_tank_batt);
+
+    PART (-5, 0, vp_frame_v2);
+    PART (-5, 0, vp_roof);
+    PART (-5, 0, vp_aisle_v2);
+    PART (-5, 1, vp_frame_v2);
+    PART (-5, 1, vp_roof);
+    PART (-5, 1, vp_bed);
+    PART (-5, -1, vp_frame_v2);
+    PART (-5, -1, vp_kitchen_unit);
+    PART (-5, -1, vp_roof);
+    PART (-5, 2, vp_board_v);
+    PART (-5, -2, vp_board_v);
+    PART (-5, -2, vp_fuel_tank_gas);
+
+    PART (-6, 0, vp_board_h);
+    PART (-6, 1, vp_board_h);
+    PART (-6, -1, vp_board_h);
+    PART (-6, 2, vp_board_n);
+    PART (-6, -2, vp_board_b);
+
+
 
     if (vtypes.size() != num_vehicles)
         debugmsg("%d vehicles, %d types", vtypes.size(), num_vehicles);

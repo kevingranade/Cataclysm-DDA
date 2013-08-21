@@ -1,4 +1,5 @@
 #include <vector>
+#include <sstream>
 #include "options.h"
 #include "game.h"
 #include "weather.h"
@@ -10,21 +11,26 @@
 void weather_effect::glare(game *g)
 {
  if (PLAYER_OUTSIDE && g->is_in_sunlight(g->u.posx, g->u.posy) && !g->u.is_wearing("sunglasses"))
-  g->u.infect(DI_GLARE, bp_eyes, 1, 2, g);
+  g->u.infect("glare", bp_eyes, 1, 2, g);
 }
 
 void weather_effect::wet(game *g)
 {
- if (!g->u.is_wearing("coat_rain") && !g->u.has_trait(PF_FEATHERS) &&
-     g->u.warmth(bp_torso) < 20 && PLAYER_OUTSIDE && one_in(2))
-  g->u.add_morale(MORALE_WET, -1, -30);
+ if ((!g->u.is_wearing("coat_rain") || one_in(50)) &&
+      (!g->u.weapon.has_flag("RAIN_PROTECT") || one_in(10)) &&
+      !g->u.has_trait("FEATHERS") && g->u.warmth(bp_torso) < 20 &&
+      PLAYER_OUTSIDE && one_in(2))
+    {
+      g->u.drench(g, 30 - g->u.warmth(bp_torso), mfb(bp_torso)|mfb(bp_arms));
+    }
+
 // Put out fires and reduce scent
  for (int x = g->u.posx - SEEX * 2; x <= g->u.posx + SEEX * 2; x++) {
   for (int y = g->u.posy - SEEY * 2; y <= g->u.posy + SEEY * 2; y++) {
    if (g->m.is_outside(x, y)) {
-    field *fd = &(g->m.field_at(x, y));
-    if (fd->type == fd_fire)
-     fd->age += 15;
+    field_entry *fd = (g->m.field_at(x, y).findField(fd_fire));
+    if (fd)
+		fd->setFieldAge(fd->getFieldAge() + 15);
     if (g->scent(x, y) > 0)
      g->scent(x, y)--;
    }
@@ -34,16 +40,20 @@ void weather_effect::wet(game *g)
 
 void weather_effect::very_wet(game *g)
 {
- if (!g->u.is_wearing("coat_rain") && !g->u.has_trait(PF_FEATHERS) &&
-     g->u.warmth(bp_torso) < 50 && PLAYER_OUTSIDE)
-  g->u.add_morale(MORALE_WET, -1, -60);
+ if ((!g->u.is_wearing("coat_rain") || one_in(25)) &&
+      (!g->u.weapon.has_flag("RAIN_PROTECT") || one_in(5)) &&
+      !g->u.has_trait("FEATHERS") && g->u.warmth(bp_torso) < 50 && PLAYER_OUTSIDE)
+    {
+      g->u.drench(g, 60 - g->u.warmth(bp_torso), mfb(bp_torso)|mfb(bp_arms));
+    }
+
 // Put out fires and reduce scent
  for (int x = g->u.posx - SEEX * 2; x <= g->u.posx + SEEX * 2; x++) {
   for (int y = g->u.posy - SEEY * 2; y <= g->u.posy + SEEY * 2; y++) {
    if (g->m.is_outside(x, y)) {
-    field *fd = &(g->m.field_at(x, y));
-    if (fd->type == fd_fire)
-     fd->age += 45;
+    field_entry *fd = g->m.field_at(x, y).findField(fd_fire);
+    if (fd)
+     fd->setFieldAge(fd->getFieldAge() + 45);
     if (g->scent(x, y) > 0)
      g->scent(x, y)--;
    }
@@ -56,9 +66,9 @@ void weather_effect::thunder(game *g)
  very_wet(g);
  if (one_in(THUNDER_CHANCE)) {
   if (g->levz >= 0)
-   g->add_msg("You hear a distant rumble of thunder.");
-  else if (!g->u.has_trait(PF_BADHEARING) && one_in(1 - 3 * g->levz))
-   g->add_msg("You hear a rumble of thunder from above.");
+   g->add_msg(_("You hear a distant rumble of thunder."));
+  else if (!g->u.has_trait("BADHEARING") && one_in(1 - 3 * g->levz))
+   g->add_msg(_("You hear a rumble of thunder from above."));
  }
 }
 
@@ -69,23 +79,50 @@ thunder(g);
 
 void weather_effect::light_acid(game *g)
 {
- wet(g);
- if (int(g->turn) % 10 == 0 && PLAYER_OUTSIDE) {
-  if (!g->u.is_wearing("coat_rain")) {
-   g->add_msg("The acid rain stings, but is harmless for now...");
-  } else if (one_in(3)) {
-   g->add_msg("Your raincoat protects you from the acid rain.");
-  }
- }
+    wet(g);
+    if (int(g->turn) % 10 == 0 && PLAYER_OUTSIDE)
+    {
+        if (g->u.weapon.has_flag("RAIN_PROTECT") && one_in(2))
+        {
+            g->add_msg(_("Your umbrella protects you from the acidic drizzle."));
+        }
+        else
+        {
+            if (g->u.is_wearing("coat_rain") && !one_in(3))
+            {
+                g->add_msg(_("Your raincoat protects you from the acidic drizzle."));
+            }
+            else
+            {
+                g->add_msg(_("The acid rain stings, but is mostly harmless for now..."));
+                if (one_in(10) && (g->u.pain < 10)) {g->u.pain++;}
+            }
+        }
+    }
 }
 
 void weather_effect::acid(game *g)
 {
- if (PLAYER_OUTSIDE) {
-  g->add_msg("The acid rain burns!");
-  if (one_in(8)&&(g->u.pain < 100))
-   g->u.pain += 3 * rng(1, 3);
- }
+    if (int(g->turn) % 2 == 0 && PLAYER_OUTSIDE)
+    {
+        if (g->u.weapon.has_flag("RAIN_PROTECT") && one_in(4))
+        {
+            g->add_msg(_("Your umbrella protects you from the acid rain."));
+        }
+        else
+        {
+            if (g->u.is_wearing("coat_rain") && one_in(2))
+            {
+                g->add_msg(_("Your raincoat protects you from the acid rain."));
+            }
+            else
+            {
+                g->add_msg(_("The acid rain burns!"));
+                if (one_in(2) && (g->u.pain < 100)) {g->u.pain += rng(1, 5);}
+            }
+        }
+    }
+
  if (g->levz >= 0) {
   for (int x = g->u.posx - SEEX * 2; x <= g->u.posx + SEEX * 2; x++) {
    for (int y = g->u.posy - SEEY * 2; y <= g->u.posy + SEEY * 2; y++) {
@@ -133,28 +170,15 @@ void weather_effect::acid(game *g)
 std::string weather_forecast(game *g, radio_tower tower)
 {
     std::stringstream weather_report;
-
-    // Current time
-    weather_report << "The current time is " << g->turn.print_time() << " Eastern Standard Time.  ";
-
     // Local conditions
-    weather_report << "At " << g->turn.print_time(true);
+    city *closest_city = &g->cur_om->cities[g->cur_om->closest_city(point(tower.x, tower.y))];
+    // Current time
+    weather_report << string_format(
+        _("The current time is %s Eastern Standard Time.  At %s in %s, it was %s. The temperature was %s"),
+        g->turn.print_time().c_str(), g->turn.print_time(true).c_str(), closest_city->name.c_str(),
+        weather_data[g->weather].name.c_str(), print_temperature(g->temperature).c_str()
+    );
 
-    city *closest_city = &g->cur_om.cities[g->cur_om.closest_city(point(tower.x, tower.y))];
-    if (closest_city)
-    {
-        weather_report << " in " << closest_city->name;
-    }
-    weather_report << ", it was " << weather_data[g->weather].name << ".  ";
-    weather_report << "The temperature was ";
-    if( OPTIONS[OPT_USE_CELSIUS] )
-    {
-        weather_report << (int)((g->temperature - 32.0) / 1.8) << "C";
-    }
-    else
-    {
-        weather_report << (int)g->temperature << "F";
-    }
     //weather_report << ", the dewpoint ???, and the relative humidity ???.  ";
     //weather_report << "The wind was <direction> at ? mi/km an hour.  ";
     //weather_report << "The pressure was ??? in/mm and steady/rising/falling.";
@@ -190,25 +214,29 @@ std::string weather_forecast(game *g, radio_tower tower)
         {
             weather_proportions[period_weather] += end_day ? 6 : 18 - period_start;
             int weather_duration = 0;
-            int predominant_weather;
+            int predominant_weather = 0;
             std::string day;
             if( g->turn.days() == period->deadline.days() )
             {
                 if( start_day )
                 {
-                    day = "Today";
+                    day = _("Today");
                 }
                 else
                 {
-                    day = "Tonight";
+                    day = _("Tonight");
                 }
             }
             else
             {
-                day = start_time.day_of_week();
+                std::string dayofweak = start_time.day_of_week();
                 if( !start_day )
                 {
-                    day += " Night";
+                    day = rmp_format(_("<Mon Night>%s Night"), dayofweak.c_str());
+                }
+                else
+                {
+                    day = dayofweak;
                 }
             }
             for( int i = WEATHER_CLEAR; i < NUM_WEATHER_TYPES; i++)
@@ -220,9 +248,11 @@ std::string weather_forecast(game *g, radio_tower tower)
                 }
             }
             // Print forecast
-            weather_report << day << "..." << weather_data[predominant_weather].name << ".  ";
-            weather_report << "Highs of " << (int)high << ".  Lows of " << (int)low << ".  ";
-
+            weather_report << string_format(
+                _("%s...%s. Highs of %s. Lows of %s. "),
+                day.c_str(), weather_data[predominant_weather].name.c_str(),
+                print_temperature(high).c_str(), print_temperature(low).c_str()
+            );
             low = period_temperature;
             high = period_temperature;
             weather_proportions[period_weather] += end_day ? 6 : 18 - period_start;
@@ -233,4 +263,23 @@ std::string weather_forecast(game *g, radio_tower tower)
         period_start = period_deadline;
     }
     return weather_report.str();
+}
+
+std::string print_temperature(float fahrenheit, int decimals)
+{
+    std::stringstream ret;
+    ret.precision(decimals);
+    ret << std::fixed;
+
+    if(OPTIONS["USE_CELSIUS"] == "Celsius")
+    {
+        ret << ((fahrenheit-32) * 5 / 9);
+        return rmp_format("<Celsius>%sC", ret.str().c_str());
+    }
+    else
+    {
+        ret << fahrenheit;
+        return rmp_format("<Fahrenheit>%sF", ret.str().c_str());
+    }
+
 }

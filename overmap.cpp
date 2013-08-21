@@ -16,11 +16,13 @@
 #include "debug.h"
 #include "cursesdef.h"
 #include "options.h"
-#include "options.h"
+#include "catacharset.h"
+#include "overmapbuffer.h"
+#include <queue>
 
 #ifdef _MSC_VER
-// MSVC prefers ISO C++ conformant names over POSIX names, but it's missing a redirect for snprintf
-#define snprintf _snprintf
+// MSVC doesn't have c99-compatible "snprintf", so do what picojson does and use _snprintf_s instead
+#define snprintf _snprintf_s
 #endif
 
 #define STREETCHANCE 2
@@ -35,15 +37,157 @@
 #define SETTLE_DICE 2
 #define SETTLE_SIDES 2
 #define HIVECHANCE 180	//Chance that any given forest will be a hive
-#define SWAMPINESS 8	//Affects the size of a swamp
-#define SWAMPCHANCE 850	// Chance that a swamp will spawn instead of forest
+#define SWAMPINESS 4	//Affects the size of a swamp
+#define SWAMPCHANCE 8500	// Chance that a swamp will spawn instead of forest
+
+map_extras no_extras(0);
+map_extras road_extras(
+// %%% HEL MIL SCI STA DRG SUP PRT MIN WLF CGR PUD CRT FUM 1WY ART
+    50, 40, 50,120,200, 30, 10,  5, 80, 20, 20, 200, 10,  8,  2,  3);
+map_extras field_extras(
+    60, 40, 15, 40, 80, 10, 10,  3, 50, 30, 40, 300, 10,  8,  1,  3);
+map_extras subway_extras(
+// %%% HEL MIL SCI STA DRG SUP PRT MIN WLF CGR PUD CRT FUM 1WY ART
+    75,  0,  5, 12,  5,  5,  0,  7,  0,  0, 0, 120,  0, 20,  1,  3);
+map_extras build_extras(
+    90,  0,  5, 12,  0, 10,  0,  5,  5,  0, 0, 0, 60,  8,  1,  3);
+
+//see omdata.h
+std::vector<oter_t> oterlist;
+
+overmap_special overmap_specials[NUM_OMSPECS] = {
+
+// Terrain	 MIN MAX DISTANCE
+{ot_crater,	   0, 10,  0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::land, mfb(OMS_FLAG_BLOB) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_hive, 	   0, 50, 10, -1, "GROUP_BEE", 20, 60, 2, 4,
+ &omspec_place::forest, mfb(OMS_FLAG_3X3)},
+
+{ot_house_north,   0,100,  0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_ROTATE_ROAD) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_s_gas_north,   0,100,  0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_ROTATE_ROAD) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_cabin,   0, 30, 20, -1, "GROUP_NULL", 0, 0, 0, 0,  // Woods cabin
+ &omspec_place::forest, mfb(OMS_FLAG_CLASSIC)},
+
+{ot_cabin_strange,   1, 1, 20, -1, "GROUP_NULL", 0, 0, 0, 0,  // Hidden cabin
+ &omspec_place::forest, mfb(OMS_FLAG_CLASSIC)},
+
+ {ot_lmoe,   0, 3, 20, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_CLASSIC)},
+
+ {ot_farm,   0, 20, 20, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_3X3_SECOND) |mfb(OMS_FLAG_DIRT_LOT) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_temple_stairs, 0,  3, 20, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::forest, 0},
+
+{ot_lab_stairs,	   0, 30,  8, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD)},
+
+{ot_fema_entrance,	   2, 5,  8, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_3X3_SECOND) | mfb(OMS_FLAG_CLASSIC)},
+
+// Terrain	 MIN MAX DISTANCE
+{ot_bunker,	   2, 10,  4, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD)},
+
+{ot_outpost,	   0, 10,  4, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, 0},
+
+{ot_silo,	   0,  1, 30, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD)},
+
+{ot_radio_tower,   1,  5,  0, 20, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_CLASSIC)},
+
+{ot_mansion_entrance, 0, 8, 0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_3X3_SECOND) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_mansion_entrance, 0, 4, 10, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_3X3_SECOND) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_megastore_entrance, 0, 5, 0, 10, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_3X3_SECOND) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_hospital_entrance, 1, 5, 3, 15, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_3X3_SECOND) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_public_works_entrance,    1, 3,  2, 10, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)},
+
+{ot_apartments_con_tower_1_entrance,    1, 5,  -1, 2, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)},
+
+{ot_apartments_mod_tower_1_entrance,    1, 4,  -1, 2, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)},
+
+{ot_office_tower_1_entrance,    1, 5,  -1, 4, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)},
+
+{ot_cathedral_1_entrance,    1, 2,  -1, 2, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)},
+
+{ot_school_2,    1, 3,  1, 5, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_3X3_FIXED)},
+
+{ot_prison_2,    1, 1,  3, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::land, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_3X3_FIXED)},
+
+{ot_hotel_tower_1_2,    1, 4,  -1, 4, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_3X3_FIXED)},
+
+{ot_sewage_treatment, 1,  5, 10, 20, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_PARKING_LOT) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_mine_entrance,  0,  5,  15, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_PARKING_LOT)},
+
+// Terrain	 MIN MAX DISTANCE
+{ot_anthill,	   0, 30,  10, -1, "GROUP_ANT", 1000, 2000, 10, 30,
+ &omspec_place::wilderness, 0},
+
+{ot_spider_pit,	   0,500,  0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::forest, 0},
+
+{ot_slimepit_down,	   0,  4,  0, -1, "GROUP_GOO", 100, 200, 2, 10,
+ &omspec_place::land, 0},
+
+{ot_fungal_bloom,  0,  3,  5, -1, "GROUP_FUNGI", 600, 1200, 30, 50,
+ &omspec_place::wilderness, 0},
+
+{ot_triffid_grove, 0,  4,  0, -1, "GROUP_TRIFFID", 800, 1300, 12, 20,
+ &omspec_place::forest, 0},
+
+{ot_river_center,  0, 10, 10, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::always, mfb(OMS_FLAG_BLOB) | mfb(OMS_FLAG_CLASSIC)},
+
+// Terrain	 MIN MAX DISTANCE
+{ot_shelter,       5, 10,  5, 10, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC)},
+
+{ot_cave,	   0, 30,  0, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, 0},
+
+{ot_toxic_dump,	   0,  5, 15, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_CLASSIC)},
+
+{ot_s_gas_north,   10,  500,  10, 200, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::by_highway, mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_ROTATE_ROAD)},
+
+{ot_haz_sar_entrance,     1,  2, 15, -1, "GROUP_NULL", 0, 0, 0, 0,
+ &omspec_place::wilderness, mfb(OMS_FLAG_ROAD) | mfb(OMS_FLAG_CLASSIC) | mfb(OMS_FLAG_2X2_SECOND)}
+};
 
 
 void settlement_building(settlement &set, int x, int y);
 
 double dist(int x1, int y1, int x2, int y2)
 {
- return sqrt(double(pow(x1-x2, 2.0) + pow(y1-y2, 2.0)));
+ return sqrt(double((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)));
 }
 
 bool is_river(oter_id ter)
@@ -55,7 +199,7 @@ bool is_river(oter_id ter)
 
 bool is_building(oter_id ter)
 {
- if (ter == ot_null || (ter >= ot_house_north))
+ if (ter == ot_null || (ter >= ot_house_north && ter <= ot_basement) || ter >= ot_ants_ns)
   return true;
  return false;
 }
@@ -134,6 +278,314 @@ oter_id house(int dir)
   case 3:  return base ? ot_house_base_west  : ot_house_west;
   default: debugmsg("Bad rotation of house."); return ot_null;
  }
+}
+
+void game::init_overmap()
+{
+    oter_t tmp_oterlist[num_ter_types] = {
+    {"nothing",		'%',	c_white,	0, no_extras, false, false, 0},
+    {_("crater"),		'O',	c_red,		2, field_extras, false, false, 0},
+    {_("field"),		'.',	c_brown,	2, field_extras, false, false, 0},
+    {_("forest"),		'F',	c_green,	3, field_extras, false, false, 0},
+    {_("forest"),		'F',	c_green,	4, field_extras, false, false, 0},
+    {_("swamp"),		'F',	c_cyan,		4, field_extras, false, false, 0},
+    {_("highway"),		'H',	c_dkgray,	2, road_extras, false, false, 0},
+    {_("highway"),		'=',	c_dkgray,	2, road_extras, false, false, 0},
+    {"BUG (omdata.h:oterlist)",			'%',	c_magenta,	0, no_extras, false, false, 0},
+    {_("road"),          LINE_XOXO,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_OXOX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XXOO,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_OXXO,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_OOXX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XOOX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XXXO,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XXOX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XOXX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_OXXX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road"),          LINE_XXXX,	c_dkgray,	2, road_extras, false, false, 0},
+    {_("road, manhole"), LINE_XXXX,	c_yellow,	2, road_extras, true, false, 0},
+    {_("bridge"),		'|',	c_dkgray,	2, no_extras, false, false, 0},
+    {_("bridge"),		'-',	c_dkgray,	2, no_extras, false, false, 0},
+    {_("river"),		'R',	c_blue,		1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("river bank"),		'R',	c_ltblue,	1, no_extras, false, false, 0},
+    {_("house"),		'^',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'>',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'v',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'<',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'^',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'>',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'v',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("house"),		'<',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("parking lot"),		'O',	c_dkgray,	1, build_extras, false, false, 2},
+    {_("park"),		'O',	c_green,	2, build_extras, false, false, 2},
+    {_("pool"),   'O',  c_ltblue, 2, no_extras, false, false, 2},
+    {_("gas station"),		'^',	c_ltblue,	5, build_extras, false, false, 2},
+    {_("gas station"),		'>',	c_ltblue,	5, build_extras, false, false, 2},
+    {_("gas station"),		'v',	c_ltblue,	5, build_extras, false, false, 2},
+    {_("gas station"),		'<',	c_ltblue,	5, build_extras, false, false, 2},
+    {_("pharmacy"),		'^',	c_ltred,	5, build_extras, false, false, 2},
+    {_("pharmacy"),		'>',	c_ltred,	5, build_extras, false, false, 2},
+    {_("pharmacy"),		'v',	c_ltred,	5, build_extras, false, false, 2},
+    {_("pharmacy"),		'<',	c_ltred,	5, build_extras, false, false, 2},
+    {_("doctor's office"), 	'^',	   i_ltred,	5, build_extras, false, false, 2},
+    {_("doctor's office"),  '>',    i_ltred, 5, build_extras, false, false, 2},
+    {_("doctor's office"),  'v',    i_ltred,	5, build_extras, false, false, 2},
+    {_("doctor's office"),  '<',    i_ltred,	5, build_extras, false, false, 2},
+    {_("office"), 	'^',	c_ltgray,	5, build_extras, false, false, 2},
+    {_("office"),		'>',	c_ltgray,	5, build_extras, false, false, 2},
+    {_("office"),		'v',	c_ltgray,	5, build_extras, false, false, 2},
+    {_("office"),		'<',	c_ltgray,	5, build_extras, false, false, 2},
+    {_("apartment tower"), 'A', c_ltgreen,		5, no_extras, false, false, 2},
+    {_("apartment tower"),	'A',	c_ltgreen,		5, no_extras, false, false, 2},
+    {_("apartment tower"), 'A', c_ltgreen, 	5, no_extras, false, false, 2},
+    {_("apartment tower"),	'A',	c_ltgreen,		5, no_extras, false, false, 2},
+    {_("office tower"), 'T', i_ltgray,		5, no_extras, false, false, 2},
+    {_("office tower"),	't',	i_ltgray,		5, no_extras, false, false, 2},
+    {_("tower parking"), 'p',	i_ltgray,		5, no_extras, false, false, 2},
+    {_("tower parking"),	'p',	i_ltgray,		5, no_extras, false, false, 2},
+    {_("church"),		'C',	c_ltred,	5, build_extras, false, false, 2},
+    {_("church"),		'C',	c_ltred,	5, build_extras, false, false, 2},
+    {_("church"),		'C',	c_ltred,	5, build_extras, false, false, 2},
+    {_("church"),		'C',	c_ltred,	5, build_extras, false, false, 2},
+    {_("cathedral"), 'C', i_ltred, 	5, no_extras, false, false, 2},
+    {_("cathedral"),	'C',	i_ltred,		5, no_extras, false, false, 2},
+    {_("cathedral basement"), 'C',	i_ltred,		5, no_extras, false, false, 2},
+    {_("cathedral basement"),	'C',	i_ltred,		5, no_extras, false, false, 2},
+    {_("grocery store"),	'^',	c_green,	5, build_extras, false, false, 2},
+    {_("grocery store"),	'>',	c_green,	5, build_extras, false, false, 2},
+    {_("grocery store"),	'v',	c_green,	5, build_extras, false, false, 2},
+    {_("grocery store"),	'<',	c_green,	5, build_extras, false, false, 2},
+    {_("hardware store"),	'^',	c_cyan,		5, build_extras, false, false, 2},
+    {_("hardware store"),	'>',	c_cyan,		5, build_extras, false, false, 2},
+    {_("hardware store"),	'v',	c_cyan,		5, build_extras, false, false, 2},
+    {_("hardware store"),	'<',	c_cyan,		5, build_extras, false, false, 2},
+    {_("electronics store"),   '^',	c_yellow,	5, build_extras, false, false, 2},
+    {_("electronics store"),   '>',	c_yellow,	5, build_extras, false, false, 2},
+    {_("electronics store"),   'v',	c_yellow,	5, build_extras, false, false, 2},
+    {_("electronics store"),   '<',	c_yellow,	5, build_extras, false, false, 2},
+    {_("sporting goods store"),'^',	c_ltcyan,	5, build_extras, false, false, 2},
+    {_("sporting goods store"),'>',	c_ltcyan,	5, build_extras, false, false, 2},
+    {_("sporting goods store"),'v',	c_ltcyan,	5, build_extras, false, false, 2},
+    {_("sporting goods store"),'<',	c_ltcyan,	5, build_extras, false, false, 2},
+    {_("liquor store"),	'^',	c_magenta,	5, build_extras, false, false, 2},
+    {_("liquor store"),	'>',	c_magenta,	5, build_extras, false, false, 2},
+    {_("liquor store"),	'v',	c_magenta,	5, build_extras, false, false, 2},
+    {_("liquor store"),	'<',	c_magenta,	5, build_extras, false, false, 2},
+    {_("gun store"),		'^',	c_red,		5, build_extras, false, false, 2},
+    {_("gun store"),		'>',	c_red,		5, build_extras, false, false, 2},
+    {_("gun store"),		'v',	c_red,		5, build_extras, false, false, 2},
+    {_("gun store"),		'<',	c_red,		5, build_extras, false, false, 2},
+    {_("clothing store"),	'^',	c_blue,		5, build_extras, false, false, 2},
+    {_("clothing store"),	'>',	c_blue,		5, build_extras, false, false, 2},
+    {_("clothing store"),	'v',	c_blue,		5, build_extras, false, false, 2},
+    {_("clothing store"),	'<',	c_blue,		5, build_extras, false, false, 2},
+    {_("library"),		'^',	c_brown,	5, build_extras, false, false, 2},
+    {_("library"),		'>',	c_brown,	5, build_extras, false, false, 2},
+    {_("library"),		'v',	c_brown,	5, build_extras, false, false, 2},
+    {_("library"),		'<',	c_brown,	5, build_extras, false, false, 2},
+    {_("restaurant"),		'^',	c_pink,		5, build_extras, false, false, 2},
+    {_("restaurant"),		'>',	c_pink,		5, build_extras, false, false, 2},
+    {_("restaurant"),		'v',	c_pink,		5, build_extras, false, false, 2},
+    {_("restaurant"),		'<',	c_pink,		5, build_extras, false, false, 2},
+    {_("fast food restaurant"),    '^', c_pink,		5, build_extras, false, false, 2},
+    {_("fast food restaurant"),    '>',	c_pink,		5, build_extras, false, false, 2},
+    {_("fast food restaurant"),    'v',	c_pink,		5, build_extras, false, false, 2},
+    {_("fast food restaurant"),    '<',	c_pink,		5, build_extras, false, false, 2},
+    {_("coffee shop"),    '^',	c_pink,		5, build_extras, false, false, 2},
+    {_("coffee shop"),    '>',	c_pink,		5, build_extras, false, false, 2},
+    {_("coffee shop"),    'v',	c_pink,		5, build_extras, false, false, 2},
+    {_("coffee shop"),    '<',	c_pink,		5, build_extras, false, false, 2},
+    {_("subway station"),	'S',	c_yellow,	5, build_extras, true, false, 2},
+    {_("subway station"),	'S',	c_yellow,	5, build_extras, true, false, 2},
+    {_("subway station"),	'S',	c_yellow,	5, build_extras, true, false, 2},
+    {_("subway station"),	'S',	c_yellow,	5, build_extras, true, false, 2},
+    {_("garage"),              'O',    c_white,       5, build_extras, false, false, 2},
+    {_("garage"),              'O',    c_white,       5, build_extras, false, false, 2},
+    {_("garage"),              'O',    c_white,       5, build_extras, false, false, 2},
+    {_("garage"),              'O',    c_white,       5, build_extras, false, false, 2},
+    {_("forest"),              'F',	   c_green,	      5, field_extras, false, false, 0}, //lost cabin
+    {_("cabin basement"),      'C',    i_green,       5, build_extras, false, false, 0},
+    {_("cabin"),              'C',    i_green,       5, build_extras, false, false, 2},
+    {_("dirt lot"),		'O',	c_brown,	1, field_extras, false, false, 0},
+    {_("farm"),              '^',    i_brown,       5, build_extras, false, false, 2},
+    {_("farm field"),              '#',    i_brown,       5, field_extras, false, false, 2},
+    {_("police station"),	'^',	h_yellow,	5, build_extras, false, false, 2},
+    {_("police station"),	'>',	h_yellow,	5, build_extras, false, false, 2},
+    {_("police station"),	'v',	h_yellow,	5, build_extras, false, false, 2},
+    {_("police station"),	'<',	h_yellow,	5, build_extras, false, false, 2},
+    {_("bank"),		'$',	c_ltgray,	5, no_extras, false, false, 2},
+    {_("bank"),		'$',	c_ltgray,	5, no_extras, false, false, 2},
+    {_("bank"),		'$',	c_ltgray,	5, no_extras, false, false, 2},
+    {_("bank"),		'$',	c_ltgray,	5, no_extras, false, false, 2},
+    {_("bar"),			'^',	i_magenta,		5, build_extras, false, false, 2},
+    {_("bar"),			'>',	i_magenta,		5, build_extras, false, false, 2},
+    {_("bar"),			'v',	i_magenta,		5, build_extras, false, false, 2},
+    {_("bar"),			'<',	i_magenta,		5, build_extras, false, false, 2},
+    {_("pawn shop"),		'^',	c_white,	5, build_extras, false, false, 2},
+    {_("pawn shop"),		'>',	c_white,	5, build_extras, false, false, 2},
+    {_("pawn shop"),		'v',	c_white,	5, build_extras, false, false, 2},
+    {_("pawn shop"),		'<',	c_white,	5, build_extras, false, false, 2},
+    {_("mil. surplus"),	'^',	i_ltgray,	5, build_extras, false, false, 2},
+    {_("mil. surplus"),	'>',	i_ltgray,	5, build_extras, false, false, 2},
+    {_("mil. surplus"),	'v',	i_ltgray,	5, build_extras, false, false, 2},
+    {_("mil. surplus"),	'<',	i_ltgray,	5, build_extras, false, false, 2},
+    {_("furniture store"),     '^',    i_brown,        5, build_extras, false, false, 2},
+    {_("furniture store"),     '>',    i_brown,        5, build_extras, false, false, 2},
+    {_("furniture store"),     'v',    i_brown,        5, build_extras, false, false, 2},
+    {_("furniture store"),     '<',    i_brown,        5, build_extras, false, false, 2},
+    {_("abandoned storefront"),        '^',    h_dkgray,       5, build_extras, false, false, 2},
+    {_("abandoned storefront"),        '>',    h_dkgray,       5, build_extras, false, false, 2},
+    {_("abandoned storefront"),        'v',    h_dkgray,       5, build_extras, false, false, 2},
+    {_("abandoned storefront"),        '<',    h_dkgray,       5, build_extras, false, false, 2},
+    {_("megastore"),		'+',	c_ltblue,	5, build_extras, false, false, 2},
+    {_("megastore"),		'M',	c_blue,		5, build_extras, false, false, 2},
+    {_("hospital"),		'H',	c_ltred,	5, build_extras, false, false, 2},
+    {_("hospital"),		'H',	c_red,		5, build_extras, false, false, 2},
+    {_("public works"), 'W',	c_ltgray,		5, no_extras, false, false, 2},
+    {_("public works"),	'w',	c_ltgray,		5, no_extras, false, false, 2},
+    {_("regional school"), 's', c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 'S',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("regional school"), 's',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("prison"), 'p', i_ltblue, 	5, no_extras, false, false, 0},
+    {_("prison"), 'P',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("prison"), 'p',	i_ltblue,		5, no_extras, false, false, 0},
+    {_("hotel parking"), 'h', c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel parking"), 'h',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel parking"), 'h',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel parking"), 'h',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel entrance"), 'H',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel parking"), 'h',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel tower"), 'H',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel tower"), 'H',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel tower"), 'H',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel basement"), 'B',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel basement"), 'B',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("hotel basement"), 'B',	c_ltblue,		5, no_extras, false, false, 2},
+    {_("mansion"),		'M',	c_ltgreen,	5, build_extras, false, false, 2},
+    {_("mansion"),		'M',	c_green,	5, build_extras, false, false, 2},
+    {_("fema camp"),		'+',	c_blue,	5, build_extras, false, false, 0},
+    {_("fema camp"),		'F',	i_blue,	5, build_extras, false, false, 0},
+    {_("radio station"),  'X',    i_ltgray, 	5, build_extras, false, false, 0},
+    {_("radio station"),  'X',    i_ltgray,		5, build_extras, false, false, 0},
+    {_("radio station"),  'X',    i_ltgray,		5, build_extras, false, false, 0},
+    {_("radio station"),  'X',    i_ltgray,		5, build_extras, false, false, 0},
+    {_("evac shelter"),	'+',	c_white,	2, no_extras, true, false, 0},
+    {_("evac shelter"),	'+',	c_white,	2, no_extras, false, true, 0},
+    {_("LMOE shelter"),	'+',	c_red,	2, no_extras, true, false, 0},
+    {_("LMOE shelter"),	'+',	c_red,	2, no_extras, false, true, 0},
+    {_("science lab"),		'L',	c_ltblue,	5, no_extras, false, false, 0},
+    {_("science lab"),		'L',	c_blue,		5, no_extras, true, false, 0},
+    {_("science lab"),		'L',	c_ltblue,	5, no_extras, false, false, 0},
+    {_("science lab"),		'L',	c_cyan,		5, no_extras, false, false, 0},
+    {_("nuclear plant"),	'P',	c_ltgreen,	5, no_extras, false, false, 0},
+    {_("nuclear plant"),	'P',	c_ltgreen,	5, no_extras, false, false, 0},
+    {_("military bunker"),	'B',	c_dkgray,	2, no_extras, true, true, 0},
+    {_("military outpost"),	'M',	c_dkgray,	2, build_extras, false, false, 0},
+    {_("missile silo"),	'0',	c_ltgray,	2, no_extras, false, false, 0},
+    {_("missile silo"),	'0',	c_ltgray,	2, no_extras, false, false, 0},
+    {_("strange temple"),	'T',	c_magenta,	5, no_extras, true, false, 0},
+    {_("strange temple"),	'T',	c_pink,		5, no_extras, true, false, 0},
+    {_("strange temple"),	'T',	c_pink,		5, no_extras, false, false, 0},
+    {_("strange temple"),	'T',	c_yellow,	5, no_extras, false, false, 0},
+    {_("sewage treatment"),	'P',	c_red,		5, no_extras, true, false, 0},
+    {_("sewage treatment"),	'P',	c_green,	5, no_extras, false, true, 0},
+    {_("sewage treatment"),	'P',	c_green,	5, no_extras, false, false, 0},
+    {_("mine entrance"),	'M',	c_ltgray,	5, no_extras, true, false, 0},
+    {_("mine shaft"),		'O',	c_dkgray,	5, no_extras, true, true, 0},
+    {_("mine"),		'M',	c_brown,	2, no_extras, false, false, 0},
+    {_("mine"),		'M',	c_brown,	2, no_extras, false, false, 0},
+    {_("mine"),		'M',	c_brown,	2, no_extras, false, false, 0},
+    {_("spiral cavern"),	'@',	c_pink,		2, no_extras, false, false, 0},
+    {_("spiral cavern"),	'@',	c_pink,		2, no_extras, false, false, 0},
+    {_("radio tower"),         'X',    c_ltgray,       2, no_extras, false, false, 0},
+    {_("toxic waste dump"),	'D',	c_pink,		2, no_extras, false, false, 0},
+    {_("hazardous waste sarcophagus"), 'X', c_ltred,		5, no_extras, false, false, 0},
+    {_("hazardous waste sarcophagus"),	'X',	c_pink,		5, no_extras, false, false, 0},
+    {_("hazardous waste sarcophagus"), 'X',	c_pink,		5, no_extras, false, false, 0},
+    {_("hazardous waste sarcophagus"),	'X',	c_pink,		5, no_extras, false, false, 0},
+    {_("cave"),		'C',	c_brown,	2, field_extras, false, false, 0},
+    {_("rat cave"),		'C',	c_dkgray,	2, no_extras, true, false, 0},
+    {_("bee hive"),		'8',	c_yellow,	3, field_extras, false, false, 0},
+    {_("fungal bloom"),	'T',	c_ltgray,	2, field_extras, false, false, 0},
+    {_("forest"),		'F',	c_green,	3, field_extras, false, false, 0}, // Spider pit
+    {_("cavern"),		'0',	c_ltgray,	5, no_extras, false, false, 0}, // Spider pit
+    {_("anthill"),		'%',	c_brown,	2, no_extras, true, false, 0},
+    {_("slime pit"),		'~',	c_ltgreen,	2, no_extras, false, false, 0},
+    {_("slime pit"),		'~',	c_ltgreen,	2, no_extras, true, false, 0},
+    {_("triffid grove"),	'T',	c_ltred,	5, no_extras, true, false, 0},
+    {_("triffid roots"),	'T',	c_ltred,	5, no_extras, true, true, 0},
+    {_("triffid heart"),	'T',	c_red,		5, no_extras, false, true, 0},
+    {_("basement"),		'O',	c_dkgray,	5, no_extras, false, true, 0},
+    {_("cavern"),		'0',	c_ltgray,	5, no_extras, false, false, 0},
+    {_("solid rock"),		'%',	c_dkgray,	5, no_extras, false, false, 0},
+    {_("rift"),		'^',	c_red,		2, no_extras, false, false, 0},
+    {_("hellmouth"),		'^',	c_ltred,	2, no_extras, true, false, 0},
+    {_("subway station"),	'S',	c_yellow,	5, subway_extras, false, true, 0},
+    {_("subway"),        LINE_XOXO,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_OXOX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XXOO,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_OXXO,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_OOXX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XOOX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XXXO,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XXOX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XOXX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_OXXX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("subway"),        LINE_XXXX,	c_dkgray,	5, subway_extras, false, false, 0},
+    {_("sewer"),         LINE_XOXO,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_OXOX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XXOO,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_OXXO,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_OOXX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XOOX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XXXO,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XXOX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XOXX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_OXXX,	c_green,	5, no_extras, false, false, 0},
+    {_("sewer"),         LINE_XXXX,	c_green,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XOXO,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_OXOX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XXOO,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_OXXO,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_OOXX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XOOX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XXXO,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XXOX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XOXX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_OXXX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant tunnel"),    LINE_XXXX,	c_brown,	5, no_extras, false, false, 0},
+    {_("ant food storage"),	'O',	c_green,	5, no_extras, false, false, 0},
+    {_("ant larva chamber"),	'O',	c_white,	5, no_extras, false, false, 0},
+    {_("ant queen chamber"),	'O',	c_red,		5, no_extras, false, false, 0},
+    {_("tutorial room"),	'O',	c_cyan,		5, no_extras, false, false, 0}
+    };
+
+    for(int i=0; i<num_ter_types; i++) {oterlist.push_back(tmp_oterlist[i]);}
 }
 
 // *** BEGIN overmap FUNCTIONS ***
@@ -267,22 +719,28 @@ bool& overmap::seen(int x, int y, int z)
  return layer[z + OVERMAP_DEPTH].visible[x][y];
 }
 
+// this uses om_sub (submap coordinates localized to overmap,
+// aka levxy or om_pos * 2)
 std::vector<mongroup*> overmap::monsters_at(int x, int y, int z)
 {
  std::vector<mongroup*> ret;
- if (x < 0 || x >= OMAPX || y < 0 || y >= OMAPY || z < -OVERMAP_DEPTH || z > OVERMAP_HEIGHT)
+ if (x < 0 || x >= OMAPX*2 || y < 0 || y >= OMAPY*2 || z < -OVERMAP_DEPTH || z > OVERMAP_HEIGHT)
   return ret;
  for (int i = 0; i < zg.size(); i++) {
   if (zg[i].posz != z) { continue; }
-  if (trig_dist(x, y, zg[i].posx, zg[i].posy) <= zg[i].radius)
-   ret.push_back(&(zg[i]));
+  if (
+      ( zg[i].diffuse == true ? square_dist(x, y, zg[i].posx, zg[i].posy) : trig_dist(x, y, zg[i].posx, zg[i].posy) )
+    <= zg[i].radius) {
+      ret.push_back(&(zg[i]));
+  }
  }
  return ret;
 }
 
+// this uses om_pos (overmap tiles, aka levxy / 2)
 bool overmap::is_safe(int x, int y, int z)
 {
- std::vector<mongroup*> mons = monsters_at(x, y, z);
+ std::vector<mongroup*> mons = monsters_at(x*2, y*2, z);
  if (mons.empty())
   return true;
 
@@ -381,8 +839,10 @@ point overmap::display_notes(game* g, int const z) const
   return point(-1, -1);
  }
 
- std::string title = "Notes:";
- WINDOW* w_notes = newwin(25, 80, (TERMY > 25) ? (TERMY-25)/2 : 0, (TERMX > 80) ? (TERMX-80)/2 : 0);
+ std::string title = _("Notes:");
+ WINDOW* w_notes = newwin(FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
+                          (TERMY > FULL_SCREEN_HEIGHT) ? (TERMY-FULL_SCREEN_HEIGHT)/2 : 0,
+                          (TERMX > FULL_SCREEN_WIDTH) ? (TERMX-FULL_SCREEN_WIDTH)/2 : 0);
 
  wborder(w_notes, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
                   LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
@@ -393,7 +853,7 @@ point overmap::display_notes(game* g, int const z) const
  mvwprintz(w_notes, 1, 1, c_ltgray, title.c_str());
  do{
   if (ch == '<' && start > 0) {
-   for (int i = 1; i < 25; i++)
+   for (int i = 1; i < FULL_SCREEN_HEIGHT; i++)
     mvwprintz(w_notes, i+1, 1, c_black, "                                                     ");
    start -= maxitems;
    if (start < 0)
@@ -403,7 +863,7 @@ point overmap::display_notes(game* g, int const z) const
   if (ch == '>' && cur_it < layer[z + OVERMAP_DEPTH].notes.size()) {
    start = cur_it;
    mvwprintw(w_notes, maxitems + 2, 13, "            ");
-   for (int i = 1; i < 25; i++)
+   for (int i = 1; i < FULL_SCREEN_HEIGHT; i++)
     mvwprintz(w_notes, i, 0, c_black, "                                                     ");
   }
   int cur_line = 3;
@@ -423,16 +883,16 @@ point overmap::display_notes(game* g, int const z) const
   if(last_line == -1)
    last_line = 23;
   if (start > 0)
-   mvwprintw(w_notes, maxitems + 4, 1, "< Go Back");
+   mvwprintw(w_notes, maxitems + 4, 1, _("< Go Back"));
   if (cur_it < layer[z + OVERMAP_DEPTH].notes.size())
-   mvwprintw(w_notes, maxitems + 4, 12, "> More notes");
+   mvwprintw(w_notes, maxitems + 4, 12, _("> More notes"));
   if(ch >= 'a' && ch <= 't'){
    int chosen_line = (int)(ch % (int)'a');
    if(chosen_line < last_line)
     return point(layer[z + OVERMAP_DEPTH].notes[start + chosen_line].x, layer[z + OVERMAP_DEPTH].notes[start + chosen_line].y);
   }
-  mvwprintz(w_notes, 1, 40, c_white, "Press letter to center on note");
-  mvwprintz(w_notes, 23, 40, c_white, "Spacebar - Return to map  ");
+  mvwprintz(w_notes, 1, 40, c_white, _("Press letter to center on note"));
+  mvwprintz(w_notes, FULL_SCREEN_HEIGHT-2, 40, c_white, _("Spacebar - Return to map  "));
   wrefresh(w_notes);
   ch = getch();
  } while(ch != ' ' && ch != '\n' && ch != KEY_ESCAPE);
@@ -713,9 +1173,6 @@ void overmap::generate(game *g, overmap* north, overmap* east, overmap* south,
  place_hiways(road_points, 0, ot_road_null);
 // Place specials
  place_specials();
-// Make the roads out road points;
- for (int i = 0; i < roads_out.size(); i++)
-  ter(roads_out[i].x, roads_out[i].y, 0) = ot_road_nesw;
 // Clean up our roads and rivers
  polish(0);
 
@@ -747,10 +1204,17 @@ bool overmap::generate_sub(int const z)
  std::vector<point> bunker_points;
  std::vector<point> shelter_points;
  std::vector<point> lmoe_points;
+ std::vector<point> cabin_strange_points;
  std::vector<point> triffid_points;
  std::vector<point> temple_points;
  std::vector<point> office_entrance_points;
  std::vector<point> office_points;
+ std::vector<point> prison_points;
+ std::vector<point> prison_entrance_points;
+ std::vector<point> haz_sar_entrance_points;
+ std::vector<point> haz_sar_points;
+ std::vector<point> cathedral_entrance_points;
+ std::vector<point> cathedral_points;
  std::vector<point> hotel_tower_1_points;
  std::vector<point> hotel_tower_2_points;
  std::vector<point> hotel_tower_3_points;
@@ -823,6 +1287,9 @@ bool overmap::generate_sub(int const z)
    else if (ter(i, j, z + 1) == ot_lmoe)
     lmoe_points.push_back( point(i, j) );
 
+   else if (ter(i, j, z + 1) == ot_cabin_strange)
+    cabin_strange_points.push_back( point(i, j) );
+
    else if (ter(i, j, z + 1) == ot_mine_entrance)
     shaft_points.push_back( point(i, j) );
 
@@ -852,6 +1319,20 @@ bool overmap::generate_sub(int const z)
     office_entrance_points.push_back( point(i, j) );
    else if (ter(i, j, z + 1) == ot_office_tower_1)
     office_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_prison_1 || ter(i, j, z + 1) == ot_prison_3 ||
+            ter(i, j, z + 1) == ot_prison_4 || ter(i, j, z + 1) == ot_prison_5 || ter(i, j, z + 1) == ot_prison_6 ||
+            ter(i, j, z + 1) == ot_prison_7 || ter(i, j, z + 1) == ot_prison_8 || ter(i, j, z + 1) == ot_prison_9)
+    prison_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_prison_2)
+    prison_entrance_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_haz_sar_entrance)
+    haz_sar_entrance_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_haz_sar)
+    haz_sar_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_cathedral_1_entrance)
+    cathedral_entrance_points.push_back( point(i, j) );
+   else if (ter(i, j, z + 1) == ot_cathedral_1)
+    cathedral_points.push_back( point(i, j) );
    else if (ter(i, j, z + 1) == ot_hotel_tower_1_7)
     hotel_tower_1_points.push_back( point(i, j) );
    else if (ter(i, j, z + 1) == ot_hotel_tower_1_8)
@@ -869,7 +1350,12 @@ bool overmap::generate_sub(int const z)
  for (int i = 0; i < subway_points.size(); i++)
   ter(subway_points[i].x, subway_points[i].y, z) = ot_subway_station;
  for (int i = 0; i < lab_points.size(); i++)
-  requires_sub |= build_lab(lab_points[i].x, lab_points[i].y, z, lab_points[i].s);
+ {
+     bool lab = build_lab(lab_points[i].x, lab_points[i].y, z, lab_points[i].s);
+     requires_sub |= lab;
+     if (!lab && ter(lab_points[i].x, lab_points[i].y, z) == ot_lab_core)
+         ter(lab_points[i].x, lab_points[i].y, z) = ot_lab;
+ }
  for (int i = 0; i < ant_points.size(); i++)
   build_anthill(ant_points[i].x, ant_points[i].y, z, ant_points[i].s);
  polish(z, ot_subway_ns, ot_subway_nesw);
@@ -910,6 +1396,9 @@ bool overmap::generate_sub(int const z)
  for (int i = 0; i < lmoe_points.size(); i++)
   ter(lmoe_points[i].x, lmoe_points[i].y, z) = ot_lmoe_under;
 
+ for (int i = 0; i < cabin_strange_points.size(); i++)
+  ter(cabin_strange_points[i].x, cabin_strange_points[i].y, z) = ot_cabin_strange_b;
+
  for (int i = 0; i < triffid_points.size(); i++) {
   if (z == -1) {
    ter( triffid_points[i].x, triffid_points[i].y, z ) = ot_triffid_roots;
@@ -931,6 +1420,18 @@ bool overmap::generate_sub(int const z)
   ter(office_entrance_points[i].x, office_entrance_points[i].y, z) = ot_office_tower_b_entrance;
  for (int i = 0; i < office_points.size(); i++)
   ter(office_points[i].x, office_points[i].y, z) = ot_office_tower_b;
+ for (int i = 0; i < prison_points.size(); i++)
+  ter(prison_points[i].x, prison_points[i].y, z) = ot_prison_b;
+ for (int i = 0; i < prison_entrance_points.size(); i++)
+  ter(prison_entrance_points[i].x, prison_entrance_points[i].y, z) = ot_prison_b_entrance;
+ for (int i = 0; i < haz_sar_entrance_points.size(); i++){
+    ter(haz_sar_entrance_points[i].x, haz_sar_entrance_points[i].y, z-1) = ot_haz_sar_entrance_b1;}
+ for (int i = 0; i < haz_sar_points.size(); i++){
+    ter(haz_sar_points[i].x, haz_sar_points[i].y, z-1) = ot_haz_sar_b1;}
+ for (int i = 0; i < cathedral_entrance_points.size(); i++)
+  ter(cathedral_entrance_points[i].x, cathedral_entrance_points[i].y, z) = ot_cathedral_b_entrance;
+ for (int i = 0; i < cathedral_points.size(); i++)
+  ter(cathedral_points[i].x, cathedral_points[i].y, z) = ot_cathedral_b;
  for (int i = 0; i < hotel_tower_1_points.size(); i++)
   ter(hotel_tower_1_points[i].x, hotel_tower_1_points[i].y, z) = ot_hotel_tower_b_1;
  for (int i = 0; i < hotel_tower_2_points.size(); i++)
@@ -1087,10 +1588,10 @@ int overmap::dist_from_city(point p)
 }
 
 void overmap::draw(WINDOW *w, game *g, int z, int &cursx, int &cursy,
-                   int &origx, int &origy, char &ch, bool blink,
+                   int &origx, int &origy, signed char &ch, bool blink,
                    overmap &hori, overmap &vert, overmap &diag)
 {
- bool legend = true, note_here = false, npc_here = false;
+ bool note_here = false, npc_here = false;
  std::string note_text;
  int om_map_width = TERMX-28;
  int om_map_height = TERMY;
@@ -1128,20 +1629,20 @@ void overmap::draw(WINDOW *w, game *g, int z, int &cursx, int &cursy,
   // If the offsets don't match the previously loaded ones, load the new adjacent overmaps.
   if( offx && loc.x + offx != hori.loc.x )
   {
-      hori = overmap( g, loc.x + offx, loc.y );
+      hori = overmap_buffer.get( g, loc.x + offx, loc.y );
   }
   if( offy && loc.y + offy != vert.loc.y )
   {
-      vert = overmap( g, loc.x, loc.y + offy );
+      vert = overmap_buffer.get( g, loc.x, loc.y + offy );
   }
   if( offx && offy && (loc.x + offx != diag.loc.x || loc.y + offy != diag.loc.y ) )
   {
-      diag = overmap( g, loc.x + offx, loc.y + offy );
+      diag = overmap_buffer.get( g, loc.x + offx, loc.y + offy );
   }
 
 // Now actually draw the map
   bool csee = false;
-  oter_id ccur_ter;
+  oter_id ccur_ter = ot_null;
   for (int i = -(om_map_width / 2); i < (om_map_width / 2); i++) {
     for (int j = -(om_map_height / 2);
          j <= (om_map_height / 2) + (ch == 'j' ? 1 : 0); j++) {
@@ -1276,43 +1777,47 @@ void overmap::draw(WINDOW *w, game *g, int z, int &cursx, int &cursy,
     {
         print_npcs(g, w, cursx, cursy, z);
     }
-  if (legend) {
-   cur_ter = ter(cursx, cursy, z);
+
+
+  cur_ter = ter(cursx, cursy, z);
 // Draw the vertical line
-   for (int j = 0; j < om_map_height; j++)
-    mvwputch(w, j, om_map_width, c_white, LINE_XOXO);
+  for (int j = 0; j < om_map_height; j++)
+   mvwputch(w, j, om_map_width, c_white, LINE_XOXO);
 // Clear the legend
-   for (int i = om_map_width + 1; i < om_map_width + 55; i++) {
-    for (int j = 0; j < om_map_height; j++)
-     mvwputch(w, j, i, c_black, ' ');
-   }
-
-   if (csee) {
-    mvwputch(w, 1, om_map_width + 1, oterlist[ccur_ter].color, oterlist[ccur_ter].sym);
-    mvwprintz(w, 1, om_map_width + 3, oterlist[ccur_ter].color, "%s",
-              oterlist[ccur_ter].name.c_str());
-   } else
-    mvwprintz(w, 1, om_map_width + 1, c_dkgray, "# Unexplored");
-
-   if (target.x != -1 && target.y != -1) {
-    int distance = rl_dist(origx, origy, target.x, target.y);
-    mvwprintz(w, 3, om_map_width + 1, c_white, "Distance to target: %d", distance);
-   }
-   mvwprintz(w, 17, om_map_width + 1, c_magenta, "Use movement keys to pan.  ");
-   mvwprintz(w, 18, om_map_width + 1, c_magenta, "0 - Center map on character");
-   mvwprintz(w, 19, om_map_width + 1, c_magenta, "t - Toggle legend          ");
-   mvwprintz(w, 20, om_map_width + 1, c_magenta, "/ - Search                 ");
-   mvwprintz(w, 21, om_map_width + 1, c_magenta, "N - Add/Edit a note        ");
-   mvwprintz(w, 22, om_map_width + 1, c_magenta, "D - Delete a note          ");
-   mvwprintz(w, 23, om_map_width + 1, c_magenta, "L - List notes             ");
-   mvwprintz(w, 24, om_map_width + 1, c_magenta, "Esc or q - Return to game  ");
+  for (int i = om_map_width + 1; i < om_map_width + 55; i++) {
+   for (int j = 0; j < om_map_height; j++)
+   mvwputch(w, j, i, c_black, ' ');
   }
+
+  if (csee) {
+   mvwputch(w, 1, om_map_width + 1, oterlist[ccur_ter].color, oterlist[ccur_ter].sym);
+   std::vector<std::string> name = foldstring(oterlist[ccur_ter].name,25);
+   for (int i = 1; (i - 1) < name.size(); i++)
+   {
+       mvwprintz(w, i, om_map_width + 3, oterlist[ccur_ter].color, "%s",
+                 name[i-1].c_str());
+   }
+  } else
+   mvwprintz(w, 1, om_map_width + 1, c_dkgray, _("# Unexplored"));
+
+  if (target.x != -1 && target.y != -1) {
+   int distance = rl_dist(origx, origy, target.x, target.y);
+   mvwprintz(w, 3, om_map_width + 1, c_white, _("Distance to target: %d"), distance);
+  }
+  mvwprintz(w, 15, om_map_width + 1, c_magenta, _("Use movement keys to pan.  "));
+  mvwprintz(w, 16, om_map_width + 1, c_magenta, _("0 - Center map on character"));
+  mvwprintz(w, 17, om_map_width + 1, c_magenta, _("/ - Search                 "));
+  mvwprintz(w, 18, om_map_width + 1, c_magenta, _("N - Add/Edit a note        "));
+  mvwprintz(w, 19, om_map_width + 1, c_magenta, _("D - Delete a note          "));
+  mvwprintz(w, 20, om_map_width + 1, c_magenta, _("L - List notes             "));
+  mvwprintz(w, 21, om_map_width + 1, c_magenta, _("Esc or q - Return to game  "));
+  mvwprintz(w, getmaxy(w)-1, om_map_width + 1, c_red, string_format(_("LEVEL %i"),z).c_str());
 // Done with all drawing!
   wrefresh(w);
 }
 
 //Start drawing the overmap on the screen using the (m)ap command.
-point overmap::draw_overmap(game *g, int const zlevel)
+point overmap::draw_overmap(game *g, int zlevel)
 {
  WINDOW* w_map = newwin(TERMY, TERMX, 0, 0);
  WINDOW* w_search = newwin(13, 27, 3, TERMX-27);
@@ -1320,14 +1825,16 @@ point overmap::draw_overmap(game *g, int const zlevel)
  bool blink = true;
  int cursx = (g->levx + int(MAPSIZE / 2)) / 2,
      cursy = (g->levy + int(MAPSIZE / 2)) / 2;
- int origx = cursx, origy = cursy;
- char ch = 0;
+ int origx = cursx, origy = cursy, origz = zlevel;
+ signed char ch = 0;
  point ret(-1, -1);
  overmap hori, vert, diag; // Adjacent maps
 
  do {
      draw(w_map, g, zlevel, cursx, cursy, origx, origy, ch, blink, hori, vert, diag);
   ch = input();
+  timeout(BLINK_SPEED);	// Enable blinking!
+
   int dirx, diry;
   if (ch != ERR)
    blink = true;	// If any input is detected, make the blinkies on
@@ -1338,18 +1845,24 @@ point overmap::draw_overmap(game *g, int const zlevel)
   } else if (ch == '0') {
    cursx = origx;
    cursy = origy;
-  } else if (ch == '\n')
+   zlevel = origz;
+  } else if (ch == '>' && zlevel > -OVERMAP_DEPTH) {
+      zlevel -= 1;
+  } else if (ch == '<' && zlevel < OVERMAP_HEIGHT) {
+      zlevel += 1;
+  }
+  else if (ch == '\n')
    ret = point(cursx, cursy);
-  else if (ch == KEY_ESCAPE || ch == 'q' || ch == 'Q')
+  else if (ch == KEY_ESCAPE || ch == 'q' || ch == 'Q' || ch == 'm')
    ret = point(-1, -1);
   else if (ch == 'N') {
    timeout(-1);
-   add_note(cursx, cursy, zlevel, string_input_popup("Note (X:TEXT for custom symbol):", 49, note(cursx, cursy, zlevel))); // 49 char max
+   add_note(cursx, cursy, zlevel, string_input_popup(_("Note (X:TEXT for custom symbol):"), 45, note(cursx, cursy, zlevel))); // 45 char max
    timeout(BLINK_SPEED);
   } else if(ch == 'D'){
    timeout(-1);
    if (has_note(cursx, cursy, zlevel)){
-    bool res = query_yn("Really delete note?");
+    bool res = query_yn(_("Really delete note?"));
     if (res == true)
      delete_note(cursx, cursy, zlevel);
    }
@@ -1366,7 +1879,7 @@ point overmap::draw_overmap(game *g, int const zlevel)
   } else if (ch == '/') {
    int tmpx = cursx, tmpy = cursy;
    timeout(-1);
-   std::string term = string_input_popup("Search term:");
+   std::string term = string_input_popup(_("Search term:"));
    timeout(BLINK_SPEED);
    draw(w_map, g, zlevel, cursx, cursy, origx, origy, ch, blink, hori, vert, diag);
    point found = find_note(cursx, cursy, zlevel, term);
@@ -1380,13 +1893,13 @@ point overmap::draw_overmap(game *g, int const zlevel)
       //Draw search box
       wborder(w_search, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
               LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
-      mvwprintz(w_search, 1, 1, c_red, "Find place:");
+      mvwprintz(w_search, 1, 1, c_red, _("Find place:"));
       mvwprintz(w_search, 2, 1, c_ltblue, "                         ");
       mvwprintz(w_search, 2, 1, c_ltblue, "%s", term.c_str());
       mvwprintz(w_search, 4, 1, c_white,
-       "'<' '>' Cycle targets.");
-      mvwprintz(w_search, 10, 1, c_white, "Enter/Spacebar to select.");
-      mvwprintz(w_search, 11, 1, c_white, "q to return.");
+       _("'<' '>' Cycle targets."));
+      mvwprintz(w_search, 10, 1, c_white, _("Enter/Spacebar to select."));
+      mvwprintz(w_search, 11, 1, c_white, _("q to return."));
       ch = input();
       if (ch == ERR)
        blink = !blink;
@@ -1417,9 +1930,7 @@ point overmap::draw_overmap(game *g, int const zlevel)
     cursx = found.x;
     cursy = found.y;
    }
-  }/* else if (ch == 't')  *** Legend always on for now! ***
-   legend = !legend;
-*/
+  }
   else if (ch == ERR)	// Hit timeout on input, so make characters blink
    blink = !blink;
  } while (ch != KEY_ESCAPE && ch != 'q' && ch != 'Q' && ch != ' ' &&
@@ -1644,7 +2155,7 @@ void overmap::put_buildings(int x, int y, int dir, city town)
     ter(x+i*xchange, y+i*ychange, 0) = shop(((dir%2)-i)%4);
    else {
     if (rng(0, 99) > 130 * dist(x, y, town.x, town.y) / town.s)
-     ter(x+i*xchange, y+i*ychange, 0) = ot_park;
+     ter(x+i*xchange, y+i*ychange, 0) = (one_in(5)?ot_pool:ot_park);
     else
      ter(x+i*xchange, y+i*ychange, 0) = house(((dir%2)-i)%4);
    }
@@ -1772,6 +2283,7 @@ void overmap::make_road(int cx, int cy, int cs, int dir, city town)
 
 bool overmap::build_lab(int x, int y, int z, int s)
 {
+ std::vector<point> generated_lab;
  ter(x, y, z) = ot_lab;
  for (int n = 0; n <= 1; n++) {	// Do it in two passes to allow diagonals
   for (int i = 1; i <= s; i++) {
@@ -1780,14 +2292,31 @@ bool overmap::build_lab(int x, int y, int z, int s)
      if ((ter(lx - 1, ly, z) == ot_lab || ter(lx + 1, ly, z) == ot_lab ||
          ter(lx, ly - 1, z) == ot_lab || ter(lx, ly + 1, z) == ot_lab) &&
          one_in(i))
-      ter(lx, ly, z) = ot_lab;
+     {
+         ter(lx, ly, z) = ot_lab;
+         generated_lab.push_back(point(lx,ly));
+     }
     }
    }
   }
  }
+ bool generate_stairs = true;
+ for (std::vector<point>::iterator it=generated_lab.begin();
+      it != generated_lab.end(); it++)
+ {
+     if (ter(it->x, it->y, z+1) == ot_lab_stairs)
+         generate_stairs = false;
+ }
+ if (generate_stairs && generated_lab.size() > 0)
+ {
+     int v = rng(0,generated_lab.size()-1);
+     point p = generated_lab[v];
+     ter(p.x, p.y, z+1) = ot_lab_stairs;
+ }
+
  ter(x, y, z) = ot_lab_core;
  int numstairs = 0;
- if (s > 1) {	// Build stairs going down
+ if (s > 0) {	// Build stairs going down
   while (!one_in(6)) {
    int stairx, stairy;
    int tries = 0;
@@ -1889,7 +2418,7 @@ bool overmap::build_slimepit(int x, int y, int z, int s)
             {
                 if (rng(1, s * 2) >= n)
                 {
-                    if (one_in(8))
+                    if (one_in(8) && z > -OVERMAP_DEPTH)
                     {
                         ter(i, j, z) = ot_slimepit_down;
                         requires_sub = true;
@@ -1961,124 +2490,87 @@ void overmap::place_rifts(int const z)
 
 void overmap::make_hiway(int x1, int y1, int x2, int y2, int z, oter_id base)
 {
- std::vector<point> next;
- int dir = 0;
- int x = x1, y = y1;
- int xdir, ydir;
- int tmp = 0;
- bool bridge_is_okay = false;
- bool found_road = false;
- do {
-  next.clear(); // Clear list of valid points
-  // Add valid points -- step in the right x-direction
-  if (x2 > x)
-   next.push_back(point(x + 1, y));
-  else if (x2 < x)
-   next.push_back(point(x - 1, y));
-  else
-   next.push_back(point(-1, -1)); // X is right--don't change it!
-  // Add valid points -- step in the right y-direction
-  if (y2 > y)
-   next.push_back(point(x, y + 1));
-  else if (y2 < y)
-   next.push_back(point(x, y - 1));
-  for (int i = 0; i < next.size(); i++) { // Take an existing road if we can
-   if (next[i].x != -1 && is_road(base, next[i].x, next[i].y, z)) {
-    x = next[i].x;
-    y = next[i].y;
-    dir = i; // We are moving... whichever way that highway is moving
-// If we're closer to the destination than to the origin, this highway is done!
-    if (dist(x, y, x1, y1) > dist(x, y, x2, y2))
-     return;
-    next.clear();
-   }
-  }
-  if (!next.empty()) { // Assuming we DIDN'T take an existing road...
-   if (next[0].x == -1) { // X is correct, so we're taking the y-change
-    dir = 1; // We are moving vertically
-    x = next[1].x;
-    y = next[1].y;
-    if (is_river(ter(x, y, z)))
-     ter(x, y, z) = ot_bridge_ns;
-    else if (!is_road(base, x, y, z))
-     ter(x, y, z) = base;
-   } else if (next.size() == 1) { // Y must be correct, take the x-change
-    if (dir == 1)
-     ter(x, y, z) = base;
-    dir = 0; // We are moving horizontally
-    x = next[0].x;
-    y = next[0].y;
-    if (is_river(ter(x, y, z)))
-     ter(x, y, z) = ot_bridge_ew;
-    else if (!is_road(base, x, y, z))
-     ter(x, y, z) = base;
-   } else {	// More than one eligable route; pick one randomly
-    //Don't switch directions if there is a building there and we don't have to...
-    if (one_in(12) &&
-       !is_river(ter(next[(dir + 1) % 2].x, next[(dir + 1) % 2].y, z)) && !is_building(ter(next[(dir + 1) % 2].x, next[(dir + 1) % 2].y, z)))
-     dir = (dir + 1) % 2; // Switch the direction (hori/vert) in which we move
-    //If our current path has a building in it and there is another possible path, we should take it
-    else if (is_building(ter(next[dir].x, next[dir].y, z)) &&
-       !is_river(ter(next[(dir + 1) % 2].x, next[(dir + 1) % 2].y, z)) && !is_building(ter(next[(dir + 1) % 2].x, next[(dir + 1) % 2].y, z)))
-     dir = (dir + 1) % 2; // Switch the direction (hori/vert) in which we move
-    x = next[dir].x;
-    y = next[dir].y;
-    if (dir == 0) {	// Moving horizontally
-     if (is_river(ter(x, y, z))) {
-      xdir = -1;
-      bridge_is_okay = true;
-      if (x2 > x)
-       xdir = 1;
-      tmp = x;
-      while (tmp >= 0 && tmp < OMAPX && is_river(ter(tmp, y, z))) {
-       if (is_road(base, tmp, y, z))
-        bridge_is_okay = false;	// Collides with another bridge!
-       tmp += xdir;
-      }
-      if (bridge_is_okay) {
-       while(tmp >= 0 && x < OMAPX && is_river(ter(x, y, z))) {
-        ter(x, y, z) = ot_bridge_ew;
-        x += xdir;
-       }
-       ter(x, y, z) = base;
-      }
-     } else if (!is_road(base, x, y, z))
+ if (x1 == x2 && y1 == y2)
+  return;
+
+ std::priority_queue<node> nodes[2];
+ bool closed[OMAPX][OMAPY] = {false};
+ int open[OMAPX][OMAPY] = {0};
+ int dirs[OMAPX][OMAPY] = {0};
+ int dx[4]={1, 0, -1, 0};
+ int dy[4]={0, 1, 0, -1};
+ int i = 0;
+ int disp = (base == ot_road_null) ? 5 : 2;
+
+ nodes[i].push(node(x1, y1, 5, 1000));
+ open[x1][y1] = 1000;
+
+ while (!nodes[i].empty()) { //A*
+  node mn = nodes[i].top();
+  nodes[i].pop();
+  closed[mn.x][mn.y] = true;
+
+  if(mn.x == x2 && mn.y == y2) {
+   int x = mn.x;
+   int y = mn.y;
+   while (x != x1 || y != y1) {
+    int d = dirs[x][y];
+    x += dx[d];
+    y += dy[d];
+    if (!is_building(ter(x, y, z))) {
+     if (is_river(ter(x, y, z))){
+      if (d == 1 || d == 3)
+       ter(x, y, z) = ot_bridge_ns;
+      else
+       ter(x, y, z) = ot_bridge_ew;
+     } else {
       ter(x, y, z) = base;
-    } else {		// Moving vertically
-     if (is_river(ter(x, y, z))) {
-      ydir = -1;
-      bridge_is_okay = true;
-      if (y2 > y)
-       ydir = 1;
-      tmp = y;
-      while (tmp >= 0 && tmp < OMAPY && is_river(ter(x, tmp, z))) {
-       if (is_road(base, x, tmp, z))
-        bridge_is_okay = false;	// Collides with another bridge!
-       tmp += ydir;
-      }
-      if (bridge_is_okay) {
-       while (tmp >= 0 && y < OMAPY && is_river(ter(x, y, z))) {
-        ter(x, y, z) = ot_bridge_ns;
-        y += ydir;
-       }
-       ter(x, y, z) = base;
-      }
-     } else if (!is_road(base, x, y, z))
-      ter(x, y, z) = base;
+     }
     }
    }
-/*
-   if (one_in(50) && loc.z == 0)
-    building_on_hiway(x, y, dir);
-*/
+   return;
   }
-  found_road = (
-        ((ter(x, y - 1, z) > ot_road_null && ter(x, y - 1, z) < ot_river_center) ||
-         (ter(x, y + 1, z) > ot_road_null && ter(x, y + 1, z) < ot_river_center) ||
-         (ter(x - 1, y, z) > ot_road_null && ter(x - 1, y, z) < ot_river_center) ||
-         (ter(x + 1, y, z) > ot_road_null && ter(x + 1, y, z) < ot_river_center)  ) &&
-        rl_dist(x, y, x1, y2) > rl_dist(x, y, x2, y2));
- } while ((x != x2 || y != y2) && !found_road);
+
+  for(int d = 0; d < 4; d++) {
+   int x = mn.x + dx[d];
+   int y = mn.y + dy[d];
+   if (!(x < 1 || x > OMAPX - 2 || y < 1 || y > OMAPY - 2 ||
+         closed[x][y] || is_building(ter(x, y, z)) || // Dont collade buildings
+        (is_river(ter(mn.x, mn.y, z)) && mn.d != d) ||
+        (is_river(ter(x,    y,    z)) && mn.d != d) )) { // Dont turn on river
+    node cn = node(x, y, d, 0);
+    cn.p += ((abs(x2 - x) + abs(y2 - y)) / disp); // Distanse to target.
+    cn.p += is_road(base, x, y, z) ? 0 : 3; // Prefer exist roads.
+    cn.p += !is_river(ter(x, y, z)) ? 0 : 2; // ...And briges.
+    //cn.p += (mn.d == d) ? 0 : 1; // Try to keep direction;
+
+    if (open[x][y] == 0) {
+     dirs[x][y] = (d + 2) % 4;
+     open[x][y] = cn.p;
+     nodes[i].push(cn);
+    }
+    else if (open[x][y] > cn.p) {
+     dirs[x][y] = (d + 2) % 4;
+     open[x][y] = cn.p;
+
+     while (nodes[i].top().x != x || nodes[i].top().y != y){
+      nodes[1 - i].push(nodes[i].top());
+      nodes[i].pop();
+     }
+     nodes[i].pop();
+
+     if (nodes[i].size() > nodes[1-i].size())
+      i = 1 - i;
+     while (!nodes[i].empty()) {
+      nodes[1 - i].push(nodes[i].top());
+      nodes[i].pop();
+     }
+     i = 1 - i;
+     nodes[i].push(cn);
+    }
+   }
+  }
+ }
 }
 
 void overmap::building_on_hiway(int x, int y, int dir)
@@ -2424,17 +2916,17 @@ void overmap::place_specials()
     int min = special.min_dist_from_city, max = special.max_dist_from_city;
     point pt(p.x, p.y);
     // Skip non-classic specials if we're in classic mode
-    if (OPTIONS[OPT_CLASSIC_ZOMBIES] && !(special.flags & mfb(OMS_FLAG_CLASSIC))) continue;
+    if (OPTIONS["CLASSIC_ZOMBIES"] && !(special.flags & mfb(OMS_FLAG_CLASSIC))) continue;
     if ((placed[ omspec_id(i) ] < special.max_appearances || special.max_appearances <= 0) &&
         (min == -1 || dist_from_city(pt) >= min) &&
         (max == -1 || dist_from_city(pt) <= max) &&
-        (place.*special.able)(this, p))
+        (place.*special.able)(this, special.flags, p))
      valid.push_back( omspec_id(i) );
    }
    tries++;
-  } while (valid.empty() && tries < 15); // Done looking for valid spot
+  } while (valid.empty() && tries < 20); // Done looking for valid spot
 
-  if (tries < 15) { // We found a valid spot!
+  if (!valid.empty()) { // We found a valid spot!
 // Place the MUST HAVE ones first, to try and guarantee that they appear
    std::vector<omspec_id> must_place;
    for (int i = 0; i < valid.size(); i++) {
@@ -2460,6 +2952,7 @@ void overmap::place_specials()
 void overmap::place_special(overmap_special special, tripoint p)
 {
  bool rotated = false;
+ int city = -1;
 // First, place terrain...
  ter(p.x, p.y, p.z) = special.ter;
 // Next, obey any special effects the flags might have
@@ -2481,39 +2974,46 @@ void overmap::place_special(overmap_special special, tripoint p)
  if (!rotated && special.flags & mfb(OMS_FLAG_ROTATE_RANDOM))
   ter(p.x, p.y, p.z) = oter_id( int(ter(p.x, p.y, p.z)) + rng(0, 3) );
 
+  if (special.flags & mfb(OMS_FLAG_ROAD)) {
+  int closest = -1, distance = 999;
+  for (int i = 0; i < cities.size(); i++) {
+   int dist = rl_dist(p.x, p.y, cities[i].x, cities[i].y);
+   if (dist < distance) {
+    closest = i;
+    distance = dist;
+   }
+  }
+  if (special.flags & (mfb(OMS_FLAG_2X2_SECOND) | mfb(OMS_FLAG_3X3_FIXED)))
+   city = closest;
+  else
+   make_hiway(p.x, p.y, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+ }
+
  if (special.flags & mfb(OMS_FLAG_3X3)) {
-  for (int x = -1; x <= 1; x++) {
-   for (int y = -1; y <= 1; y++) {
-    if (x == 0 && y == 0)
+  for (int x = p.x; x < p.x + 3; x++) {
+   for (int y = p.y; y < p.y + 3; y++) {
+    if (x == p.x && y == p.y)
      y++; // Already handled
-    point np(p.x + x, p.y + y);
-    ter(np.x, np.y, p.z) = special.ter;
+    ter(x, y, p.z) = special.ter;
    }
   }
  }
 
  if (special.flags & mfb(OMS_FLAG_3X3_SECOND)) {
-  int startx = p.x - 1, starty = p.y;
-  if (is_road(p.x, p.y - 1, p.z)) { // Road to north
-   startx = p.x - 1;
-   starty = p.y;
-  } else if (is_road(p.x + 1, p.y, p.z)) { // Road to east
-   startx = p.x - 2;
-   starty = p.y - 1;
-  } else if (is_road(p.x, p.y + 1, p.z)) { // Road to south
-   startx = p.x - 1;
-   starty = p.y - 2;
-  } else if (is_road(p.x - 1, p.y, p.z)) { // Road to west
-   startx = p.x;
-   starty = p.y - 1;
-  }
-  if (startx != -1) {
-   for (int x = startx; x < startx + 3; x++) {
-    for (int y = starty; y < starty + 3; y++)
-     ter(x, y, p.z) = oter_id(special.ter + 1);
+  for (int x = p.x; x < p.x + 3; x++) {
+   for (int y = p.y; y < p.y + 3; y++) {
+    ter(x, y, p.z) = oter_id(special.ter + 1);
    }
-   ter(p.x, p.y, p.z) = special.ter;
   }
+
+  if (is_road(p.x + 3, p.y + 1, p.z)) // Road to east
+   ter(p.x + 2, p.y + 1, p.z) = special.ter;
+  else if (is_road(p.x + 1, p.y + 3, p.z)) // Road to south
+   ter(p.x + 1, p.y + 2, p.z) = special.ter;
+  else if (is_road(p.x - 1, p.y + 1, p.z)) // Road to west
+   ter(p.x, p.y + 1, p.z) = special.ter;
+  else // Road to north, or no roads
+   ter(p.x + 1, p.y, p.z) = special.ter;
  }
 
  if (special.flags & mfb(OMS_FLAG_BLOB)) {
@@ -2523,7 +3023,7 @@ void overmap::place_special(overmap_special special, tripoint p)
      y++; // Already handled
     omspec_place place;
     tripoint np(p.x + x, p.y + y, p.z);
-    if (one_in(1 + abs(x) + abs(y)) && (place.*special.able)(this, np))
+    if (one_in(1 + abs(x) + abs(y)) && (place.*special.able)(this, special.flags, np))
      ter(p.x + x, p.y + y, p.z) = special.ter;
    }
   }
@@ -2536,99 +3036,115 @@ void overmap::place_special(overmap_special special, tripoint p)
      y++; // Already handled
     omspec_place place;
     tripoint np(p.x + x, p.y + y, p.z);
-    if ((place.*special.able)(this, np))
+    if ((place.*special.able)(this, special.flags, np))
      ter(p.x + x, p.y + y, p.z) = special.ter;
      ter(p.x + x, p.y + y, p.z) = special.ter;
    }
   }
  }
 
- if (special.flags & mfb(OMS_FLAG_ROAD)) {
-  int closest = -1, distance = 999;
-  for (int i = 0; i < cities.size(); i++) {
-   int dist = rl_dist(p.x, p.y, cities[i].x, cities[i].y);
-   if (dist < distance) {
-    closest = i;
-    distance = dist;
+ if (special.flags & mfb(OMS_FLAG_3X3_FIXED)) {
+  //                 |
+  // 963  789  147  321
+  // 852- 456 -258  654
+  // 741  123  369  789
+  //       |
+  int dir = 0;
+  if (is_road(p.x + 1, p.y - 1, p.z)) // Road to north
+   dir = 0;
+  else if (is_road(p.x + 3, p.y + 1, p.z))  // Road to east
+   dir = 1;
+  else if (is_road(p.x + 1, p.y + 3, p.z)) // Road to south
+   dir = 2;
+  else if (is_road(p.x - 1, p.y + 1, p.z)) // Road to west
+   dir = 3;
+  else
+   dir = rng(0, 3); // Random direction;
+
+  if (dir == 0) {
+   for (int i = -1, y = p.y; y <= p.y + 2; y++){
+    for (int x = p.x + 2; x >= p.x; x--, i++){
+     ter(x, y, p.z) = oter_id(special.ter + i);
+    }
    }
+   if (special.ter == ot_school_2)
+    make_hiway(p.x, p.y - 1, p.x + 1, p.y - 1, p.z, ot_road_null);
+  } else if (dir == 1) {
+   for (int i = -1, x = p.x + 2; x >= p.x; x--){
+    for (int y = p.y + 2; y >= p.y; y--, i++){
+     ter(x, y, p.z) = oter_id(special.ter + i);
+    }
+   }
+   if (special.ter == ot_school_2)
+    make_hiway(p.x + 3, p.y, p.x + 3, p.y + 1, p.z, ot_road_null);
+  } else if (dir == 2) {
+   for (int i = -1, y = p.y + 2; y >= p.y; y--){
+    for (int x = p.x; x <= p.x + 2; x++, i++){
+     ter(x, y, p.z) = oter_id(special.ter + i);
+    }
+   }
+   if (special.ter == ot_school_2)
+    make_hiway(p.x + 2, p.y + 3, p.x + 1, p.y + 3, p.z, ot_road_null);
+  } else if (dir == 3) {
+   for (int i = -1, x = p.x; x <= p.x + 2; x++){
+    for (int y = p.y; y <= p.y + 2; y++, i++){
+     ter(x, y, p.z) = oter_id(special.ter + i);
+    }
+   }
+   if (special.ter == ot_school_2)
+    make_hiway(p.x - 1, p.y + 2, p.x - 1, p.y + 1, p.z, ot_road_null);
   }
-  make_hiway(p.x, p.y, cities[closest].x, cities[closest].y, p.z, ot_road_null);
- }
- 
-  if (special.flags & mfb(OMS_FLAG_3X3_FIXED)) {
-  if (is_road(p.x, p.y - 1, p.z)) { // Road to north
-   ter(p.x+1, p.y, p.z) = oter_id(special.ter - 1);//1
-   ter(p.x, p.y, p.z) = special.ter;//2
-   ter(p.x-1, p.y, p.z) = oter_id(special.ter + 1);//3
-   ter(p.x+1, p.y+1, p.z) = oter_id(special.ter + 2);//4
-   ter(p.x, p.y+1, p.z) = oter_id(special.ter + 3);//5
-   ter(p.x-1, p.y+1, p.z) = oter_id(special.ter + 4);//6
-   ter(p.x+1, p.y+2, p.z) = oter_id(special.ter + 5);//7
-   ter(p.x, p.y+2, p.z) = oter_id(special.ter + 6);//8
-   ter(p.x-1, p.y+2, p.z) = oter_id(special.ter + 7);//9
-   if (special.ter == ot_school_2)
-    make_hiway(p.x, p.y-1, p.x-1, p.y-1, p.z, ot_road_null);
-  } else if (is_road(p.x + 1, p.y, p.z)) { // Road to east
-   ter(p.x, p.y+1, p.z) = oter_id(special.ter - 1);//1
-   ter(p.x, p.y, p.z) = special.ter;//2
-   ter(p.x, p.y-1, p.z) = oter_id(special.ter + 1);//3
-   ter(p.x-1, p.y+1, p.z) = oter_id(special.ter + 2);//4
-   ter(p.x-1, p.y, p.z) = oter_id(special.ter + 3);//5
-   ter(p.x-1, p.y-1, p.z) = oter_id(special.ter + 4);//6
-   ter(p.x-2, p.y+1, p.z) = oter_id(special.ter + 5);//7
-   ter(p.x-2, p.y, p.z) = oter_id(special.ter + 6);//8
-   ter(p.x-2, p.y-1, p.z) = oter_id(special.ter + 7);//9
-   if (special.ter == ot_school_2)
-    make_hiway(p.x+1, p.y, p.x+1, p.y-1, p.z, ot_road_null);
-  } else if (is_road(p.x, p.y + 1, p.z)) { // Road to south
-   ter(p.x-1, p.y, p.z) = oter_id(special.ter - 1);//1
-   ter(p.x, p.y, p.z) = special.ter;//2
-   ter(p.x+1, p.y, p.z) = oter_id(special.ter + 1);//3
-   ter(p.x-1, p.y-1, p.z) = oter_id(special.ter + 2);//4
-   ter(p.x, p.y-1, p.z) = oter_id(special.ter + 3);//5
-   ter(p.x+1, p.y-1, p.z) = oter_id(special.ter + 4);//6
-   ter(p.x-1, p.y-2, p.z) = oter_id(special.ter + 5);//7
-   ter(p.x, p.y-2, p.z) = oter_id(special.ter + 6);//8
-   ter(p.x+1, p.y-2, p.z) = oter_id(special.ter + 7);//9
-   if (special.ter == ot_school_2)
-    make_hiway(p.x, p.y+1, p.x+1, p.y+1, p.z, ot_road_null);
-  } else if (is_road(p.x - 1, p.y, p.z)) { // Road to west
-   ter(p.x, p.y-1, p.z) = oter_id(special.ter - 1);//1
-   ter(p.x, p.y, p.z) = special.ter;//2
-   ter(p.x, p.y+1, p.z) = oter_id(special.ter + 1);//3
-   ter(p.x+1, p.y-1, p.z) = oter_id(special.ter + 2);//4
-   ter(p.x+1, p.y, p.z) = oter_id(special.ter + 3);//5
-   ter(p.x+1, p.y+1, p.z) = oter_id(special.ter + 4);//6
-   ter(p.x+2, p.y-1, p.z) = oter_id(special.ter + 5);//7
-   ter(p.x+2, p.y, p.z) = oter_id(special.ter + 6);//8
-   ter(p.x+2, p.y+1, p.z) = oter_id(special.ter + 7);//9
-   if (special.ter == ot_school_2)
-    make_hiway(p.x-1, p.y, p.x-1, p.y+1, p.z, ot_road_null);
+
+  if (special.flags & mfb(OMS_FLAG_ROAD)) {
+   if (dir == 0)
+    make_hiway(p.x + 1, p.y - 1, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 1)
+    make_hiway(p.x + 3, p.y + 1, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 2)
+    make_hiway(p.x + 1, p.y + 3, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 3)
+    make_hiway(p.x - 1, p.y + 1, cities[city].x, cities[city].y, p.z, ot_road_null);
   }
  }
- 
+
  //Buildings should be designed with the entrance at the southwest corner and open to the street on the south.
  if (special.flags & mfb(OMS_FLAG_2X2_SECOND)) {
-  int startx = p.x-3, starty = p.y-3; // Acts as an error message, way offset from ideal
-  if (is_road(p.x, p.y - 1, p.z)) { // Road to north
-   startx = p.x - 1;
-   starty = p.y;
-  } else if (is_road(p.x + 1, p.y, p.z)) { // Road to east
-   startx = p.x - 1;
-   starty = p.y-1;
-  } else if (is_road(p.x, p.y + 1, p.z)) { // Road to south
-   startx = p.x;
-   starty = p.y - 1;
-  } else if (is_road(p.x - 1, p.y, p.z)) { // Road to west
-   startx = p.x;
-   starty = p.y;
-  }
-  if (startx != -1) {
-   for (int x = startx; x <= startx+1; x++) {
-    for (int y = starty; y <= starty+1; y++)
-     ter(x, y, p.z) = oter_id(special.ter+1);
+  for (int x = p.x; x < p.x + 2; x++) {
+   for (int y = p.y; y < p.y + 2; y++) {
+    ter(x, y, p.z) = oter_id(special.ter + 1);
    }
+  }
+
+  int dir = 0;
+  if (is_road(p.x + 1, p.y - 1, p.z)) // Road to north
+   dir = 0;
+  else if (is_road(p.x + 2, p.y + 1, p.z))  // Road to east
+   dir = 1;
+  else if (is_road(p.x, p.y + 2, p.z)) // Road to south
+   dir = 2;
+  else if (is_road(p.x - 1, p.y, p.z)) // Road to west
+   dir = 3;
+  else
+   dir = rng(0, 3); // Random direction;
+
+  if (dir == 0)
+   ter(p.x + 1, p.y, p.z) = oter_id(special.ter);
+  else if (dir == 1)
+   ter(p.x + 1, p.y + 1, p.z) = oter_id(special.ter);
+  else if (dir == 2)
+   ter(p.x, p.y + 1, p.z) = oter_id(special.ter);
+  else if (dir == 3)
    ter(p.x, p.y, p.z) = oter_id(special.ter);
+
+  if (special.flags & mfb(OMS_FLAG_ROAD)) {
+   if (dir == 0)
+    make_hiway(p.x + 1, p.y - 1, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 1)
+    make_hiway(p.x + 2, p.y + 1, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 2)
+    make_hiway(p.x, p.y + 2, cities[city].x, cities[city].y, p.z, ot_road_null);
+   else if (dir == 3)
+    make_hiway(p.x - 1, p.y, cities[city].x, cities[city].y, p.z, ot_road_null);
   }
  }
 
@@ -2641,9 +3157,15 @@ void overmap::place_special(overmap_special special, tripoint p)
     distance = dist;
    }
   }
-  ter(p.x, p.y - 1, p.z) = ot_s_lot;
-  make_hiway(p.x, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  if (special.flags & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND))) {
+   ter(p.x + 1, p.y - 1, p.z) = ot_s_lot;
+   make_hiway(p.x + 1, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  } else {
+   ter(p.x, p.y - 1, p.z) = ot_s_lot;
+   make_hiway(p.x, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  }
  }
+
  if (special.flags & mfb(OMS_FLAG_DIRT_LOT)) {
   int closest = -1, distance = 999;
   for (int i = 0; i < cities.size(); i++) {
@@ -2653,8 +3175,13 @@ void overmap::place_special(overmap_special special, tripoint p)
     distance = dist;
    }
   }
-  ter(p.x, p.y - 1, p.z) = ot_dirtlot;
-  make_hiway(p.x, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  if (special.flags & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND))) {
+   ter(p.x + 1, p.y - 1, p.z) = ot_dirtlot;
+   make_hiway(p.x + 1, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  } else {
+   ter(p.x, p.y - 1, p.z) = ot_dirtlot;
+   make_hiway(p.x, p.y - 1, cities[closest].x, cities[closest].y, p.z, ot_road_null);
+  }
  }
 
 // Finally, place monsters if applicable
@@ -2677,7 +3204,7 @@ void overmap::place_special(overmap_special special, tripoint p)
 
 void overmap::place_mongroups()
 {
- if (!OPTIONS[OPT_STATIC_SPAWN]) {
+ if (!OPTIONS["STATIC_SPAWN"]) {
   // Cities are full of zombies
   for (unsigned int i = 0; i < cities.size(); i++) {
    if (!one_in(16) || cities[i].s > 5)
@@ -2686,7 +3213,7 @@ void overmap::place_mongroups()
   }
  }
 
- if (!OPTIONS[OPT_CLASSIC_ZOMBIES]) {
+ if (!OPTIONS["CLASSIC_ZOMBIES"]) {
   // Figure out where swamps are, and place swamp monsters
   for (int x = 3; x < OMAPX - 3; x += 7) {
    for (int y = 3; y < OMAPY - 3; y += 7) {
@@ -2706,13 +3233,13 @@ void overmap::place_mongroups()
   }
  }
 
- if (!OPTIONS[OPT_CLASSIC_ZOMBIES]) {
+ if (!OPTIONS["CLASSIC_ZOMBIES"]) {
   // Place the "put me anywhere" groups
   int numgroups = rng(0, 3);
   for (int i = 0; i < numgroups; i++) {
    zg.push_back(
 	 mongroup("GROUP_WORM", rng(0, OMAPX * 2 - 1), rng(0, OMAPY * 2 - 1), 0,
-	          rng(20, 40), rng(500, 1000)));
+	          rng(20, 40), rng(30, 50)));
   }
  }
 
@@ -2744,13 +3271,13 @@ void overmap::place_radios()
        switch(choice)
        {
        case 0:
-           snprintf( message, sizeof(message), "This is emergency broadcast station %d%d.\
-  Please proceed quickly and calmly to your designated evacuation point.", i, j);
+           snprintf( message, sizeof(message), _("This is emergency broadcast station %d%d.\
+  Please proceed quickly and calmly to your designated evacuation point."), i, j);
            radios.push_back(radio_tower(i*2, j*2, rng(RADIO_MIN_STRENGTH, RADIO_MAX_STRENGTH), message));
            break;
        case 1:
            radios.push_back(radio_tower(i*2, j*2, rng(RADIO_MIN_STRENGTH, RADIO_MAX_STRENGTH),
-               "Head West.  All survivors, head West.  Help is waiting."));
+               _("Head West.  All survivors, head West.  Help is waiting.")));
            break;
        case 2:
            radios.push_back(radio_tower(i*2, j*2, rng(RADIO_MIN_STRENGTH, RADIO_MAX_STRENGTH), "", WEATHER_RADIO));
@@ -2759,14 +3286,14 @@ void overmap::place_radios()
    }
     break;
    case ot_lmoe:
-    snprintf( message, sizeof(message), "This is automated emergency shelter beacon %d%d.\
-  Supplies, amenities and shelter are stocked.", i, j);
+    snprintf( message, sizeof(message), _("This is automated emergency shelter beacon %d%d.\
+  Supplies, amenities and shelter are stocked."), i, j);
     radios.push_back(radio_tower(i*2, j*2, rng(RADIO_MIN_STRENGTH, RADIO_MAX_STRENGTH) / 2, message));
     break;
    case ot_fema_entrance:
-    snprintf( message, sizeof(message), "This is FEMA camp %d%d.\
+    snprintf( message, sizeof(message), _("This is FEMA camp %d%d.\
   Supplies are limited, please bring supplemental food, water, and bedding.\
-  This is FEMA camp %d%d.  A designated long-term emergency shelter.", i, j, i, j);
+  This is FEMA camp %d%d.  A designated long-term emergency shelter."), i, j, i, j);
     radios.push_back(radio_tower(i*2, j*2, rng(RADIO_MIN_STRENGTH, RADIO_MAX_STRENGTH), message));
      break;
    }
@@ -2817,7 +3344,7 @@ void overmap::save()
 
  for (int i = 0; i < zg.size(); i++)
   fout << "Z " << zg[i].type << " " << zg[i].posx << " " << zg[i].posy << " " << zg[i].posz << " " <<
-    int(zg[i].radius) << " " << zg[i].population << " " << zg[i].diffuse <<
+    int(zg[i].radius) << " " << zg[i].population << " " << zg[i].diffuse << " " << zg[i].dying <<
     std::endl;
  for (int i = 0; i < cities.size(); i++)
   fout << "t " << cities[i].x << " " << cities[i].y << " " << cities[i].s <<
@@ -2842,7 +3369,7 @@ void overmap::open(game *g)
  std::string const terfilename = terrain_filename(loc.x, loc.y);
  std::ifstream fin;
  char datatype;
- int cx, cy, cz, cs, cp, cd;
+ int cx, cy, cz, cs, cp, cd, cdying;
  std::string cstr;
  city tmp;
  std::list<item> npc_inventory;
@@ -2873,9 +3400,10 @@ void overmap::open(game *g)
      debugmsg("Loaded z level out of range (z: %d)", z);
     }
    } else if (datatype == 'Z') {	// Monster group
-    fin >> cstr >> cx >> cy >> cz >> cs >> cp >> cd;
+    fin >> cstr >> cx >> cy >> cz >> cs >> cp >> cd >> cdying;
     zg.push_back(mongroup(cstr, cx, cy, cz, cs, cp));
     zg.back().diffuse = cd;
+    zg.back().dying = cdying;
     nummg++;
    } else if (datatype == 't') {	// City
     fin >> cx >> cy >> cs;
@@ -2906,6 +3434,10 @@ void overmap::open(game *g)
     npc * tmp = new npc();
     tmp->load_info(g, npcdata);
     npcs.push_back(tmp);
+   } else if (datatype == 'P') {
+       // Chomp the invlet_cache, since the npc doesn't use it.
+       std::string itemdata;
+       getline(fin, itemdata);
    } else if (datatype == 'I' || datatype == 'C' || datatype == 'W' ||
               datatype == 'w' || datatype == 'c') {
     std::string itemdata;
@@ -3013,46 +3545,120 @@ std::string overmap::player_filename(int const x, int const y) const
 {
  std::stringstream filename;
 
- filename << "save/" << name << ".seen." << x << "." << y;
+ filename << "save/" << base64_encode(name) << ".seen." << x << "." << y;
 
  return filename.str();
 }
 
 // Overmap special placement functions
 
-bool omspec_place::water(overmap *om, tripoint p)
+bool omspec_place::water(overmap *om, unsigned long f, tripoint p)
 {
- oter_id ter = om->ter(p.x, p.y, p.z);
- return (ter >= ot_river_center && ter <= ot_river_nw);
+ int size = 1;
+ if (f & (mfb(OMS_FLAG_2X2) | mfb(OMS_FLAG_2X2_SECOND)))
+     size = 2;
+ else if (f & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND)))
+     size = 3;
+
+ for (int x = p.x; x < p.x + size; x++){
+  for (int y = p.y; y < p.y + size; y++){
+   oter_id ter = om->ter(x, y, p.z);
+   if (ter < ot_river_center || ter > ot_river_nw)
+    return false;
+  }
+ }
+ return true;
 }
 
-bool omspec_place::land(overmap *om, tripoint p)
+bool omspec_place::land(overmap *om, unsigned long f, tripoint p)
 {
- oter_id ter = om->ter(p.x, p.y, p.z);
- return (ter < ot_river_center || ter > ot_river_nw);
+ int size = 1;
+ if (f & (mfb(OMS_FLAG_2X2) | mfb(OMS_FLAG_2X2_SECOND)))
+     size = 2;
+ else if (f & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND)))
+     size = 3;
+
+ for (int x = p.x; x < p.x + size; x++){
+  for (int y = p.y; y < p.y + size; y++){
+   oter_id ter = om->ter(x, y, p.z);
+   if (ter >= ot_river_center && ter <= ot_river_nw)
+    return false;
+  }
+ }
+ return true;
 }
 
-bool omspec_place::forest(overmap *om, tripoint p)
+bool omspec_place::forest(overmap *om, unsigned long f, tripoint p)
 {
- oter_id ter = om->ter(p.x, p.y, p.z);
- return (ter == ot_forest || ter == ot_forest_thick || ter == ot_forest_water);
+ int size = 1;
+ if (f & (mfb(OMS_FLAG_2X2) | mfb(OMS_FLAG_2X2_SECOND)))
+     size = 2;
+ else if (f & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND)))
+     size = 3;
+
+ for (int x = p.x; x < p.x + size; x++){
+  for (int y = p.y; y < p.y + size; y++){
+   oter_id ter = om->ter(x, y, p.z);
+   if (ter != ot_forest && ter != ot_forest_thick && ter != ot_forest_water)
+    return false;
+  }
+ }
+ return true;
 }
 
-bool omspec_place::wilderness(overmap *om, tripoint p)
+bool omspec_place::wilderness(overmap *om, unsigned long f, tripoint p)
 {
- oter_id ter = om->ter(p.x, p.y, p.z);
- return (ter == ot_forest || ter == ot_forest_thick || ter == ot_forest_water ||
-         ter == ot_field);
+ int size = 1;
+ if (f & (mfb(OMS_FLAG_2X2) | mfb(OMS_FLAG_2X2_SECOND)))
+     size = 2;
+ else if (f & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND)))
+     size = 3;
+
+ for (int x = p.x; x < p.x + size; x++){
+  for (int y = p.y; y < p.y + size; y++){
+   oter_id ter = om->ter(x, y, p.z);
+   if (ter != ot_forest && ter != ot_forest_thick &&
+       ter != ot_forest_water && ter != ot_field)
+    return false;
+  }
+ }
+ return true;
 }
 
-bool omspec_place::by_highway(overmap *om, tripoint p)
+bool omspec_place::by_highway(overmap *om, unsigned long f, tripoint p)
 {
- oter_id ter = om->ter(p.x, p.y, p.z);
- return ((om->is_road_or_highway(p.x, p.y-1, p.z))||
-           (om->is_road_or_highway(p.x, p.y+1, p.z))||
-           (om->is_road_or_highway(p.x+1, p.y, p.z))||
-           (om->is_road_or_highway(p.x-1, p.y, p.z)))
-           &&
-           (ter == ot_forest || ter == ot_forest_thick || ter == ot_forest_water ||
-         ter == ot_field);
+ int size = 1;
+ if (f & (mfb(OMS_FLAG_2X2) | mfb(OMS_FLAG_2X2_SECOND)))
+     size = 2;
+ else if (f & (mfb(OMS_FLAG_3X3) | mfb(OMS_FLAG_3X3_FIXED) | mfb(OMS_FLAG_3X3_SECOND)))
+     size = 3;
+
+ for (int x = p.x; x < p.x + size; x++){
+  for (int y = p.y; y < p.y + size; y++){
+   oter_id ter = om->ter(x, y, p.z);
+   if (ter != ot_forest && ter != ot_forest_thick &&
+       ter != ot_forest_water && ter != ot_field)
+    return false;
+  }
+ }
+
+ if (size == 3 &&
+     !om->is_road_or_highway(p.x + 1, p.y - 1, p.z) &&
+     !om->is_road_or_highway(p.x + 3, p.y + 1, p.z) &&
+     !om->is_road_or_highway(p.x + 1, p.y + 3, p.z) &&
+     !om->is_road_or_highway(p.x - 1, p.y + 1, p.z))
+  return false;
+ else if (size == 2 &&
+          !om->is_road_or_highway(p.x + 1, p.y - 1, p.z) &&
+          !om->is_road_or_highway(p.x + 2, p.y + 1, p.z) &&
+          !om->is_road_or_highway(p.x, p.y + 2, p.z) &&
+          !om->is_road_or_highway(p.x - 1, p.y, p.z))
+  return false;
+ else if (size == 1 &&
+          !om->is_road_or_highway(p.x, p.y - 1, p.z) &&
+          !om->is_road_or_highway(p.x, p.y + 1, p.z) &&
+          !om->is_road_or_highway(p.x - 1, p.y, p.z) &&
+          !om->is_road_or_highway(p.x + 1, p.y, p.z))
+  return false;
+ return true;
 }

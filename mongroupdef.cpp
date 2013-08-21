@@ -2,8 +2,16 @@
 #include <fstream>
 #include <vector>
 #include "setvector.h"
-#include "picojson.h"
+#include "catajson.h"
 #include "options.h"
+
+// Default start time, this is the only place it's still used.
+#define STARTING_MINUTES 480
+
+// hack for MingW: prevent undefined references to `libintl_printf'
+#if defined _WIN32 || defined __CYGWIN__
+ #undef printf
+#endif
 
 //Adding a group:
 //  1: Declare it in the MonsterGroupDefs enum in mongroup.h
@@ -20,7 +28,17 @@
 
 std::map<std::string, MonsterGroup> MonsterGroupManager::monsterGroupMap;
 
-void game::init_mongroups() { MonsterGroupManager::LoadJSONGroups(); }
+void game::init_mongroups() throw (std::string)
+{
+   try
+   {
+       MonsterGroupManager::LoadJSONGroups();
+   }
+   catch(std::string &error_message)
+   {
+       throw;
+   }
+}
 
 mon_id MonsterGroupManager::GetMonsterFromGroup( std::string group, std::vector <mtype*> *mtypes,
                                                  int *quantity, int turn )
@@ -30,7 +48,7 @@ mon_id MonsterGroupManager::GetMonsterFromGroup( std::string group, std::vector 
     for (FreqDef_iter it = g.monsters.begin(); it != g.monsters.end(); ++it)
     {
         if((turn == -1 || (turn + 900 >= MINUTES(STARTING_MINUTES) + HOURS((*mtypes)[it->first]->difficulty))) &&
-           (!OPTIONS[OPT_CLASSIC_ZOMBIES] ||
+           (!OPTIONS["CLASSIC_ZOMBIES"] ||
             (*mtypes)[it->first]->in_category(MC_CLASSIC) ||
             (*mtypes)[it->first]->in_category(MC_WILDLIFE)))
         {   //Not too hard for us (or we dont care)
@@ -43,7 +61,7 @@ mon_id MonsterGroupManager::GetMonsterFromGroup( std::string group, std::vector 
         }
     }
     if ((turn + 900 < MINUTES(STARTING_MINUTES) + HOURS((*mtypes)[g.defaultMonster]->difficulty))
-        && (!OPTIONS[OPT_STATIC_SPAWN]))
+        && (!OPTIONS["STATIC_SPAWN"]))
     {
         return mon_null;
     }
@@ -139,31 +157,31 @@ MonsterGroup GetMGroupFromJSON(picojson::object *jsonobj)
     return g;
 }
 
-void MonsterGroupManager::LoadJSONGroups()
+void MonsterGroupManager::LoadJSONGroups() throw (std::string)
 {
     //open the file
     std::ifstream file;
     file.open(monGroupFilePath);
     if(!file.good())
     {
-        printf("Unable to load file %s\n",monGroupFilePath); return;
+        throw (std::string)"Unable to load file " + monGroupFilePath;
     }
 
     //load the data
     picojson::value groupsRaw;
     file >> groupsRaw;
 
-    std::string error = picojson::get_last_error();
+    /*std::string error = picojson::get_last_error();
     if(! error.empty())
     {
         printf("'%s' : %s", monGroupFilePath, error.c_str());
         return;
-    }
+    }*/
 
     //check the data
     if (! groupsRaw.is<picojson::array>()) {
-        printf("The monster group file '%s' does not contain the expected JSON data", monGroupFilePath);
-        return;
+        throw (std::string)"The monster group file " + monGroupFilePath +
+              (std::string)" does not contain the expected JSON data";
     }
 
     init_translation();
@@ -176,6 +194,10 @@ void MonsterGroupManager::LoadJSONGroups()
         jsonobj = it_groups->get<picojson::object>();
         g = GetMGroupFromJSON(&jsonobj);
         monsterGroupMap[g.name] = g;
+    }
+    if(!json_good())
+    {
+        throw (std::string)"There was an error reading " + monGroupFilePath;
     }
 }
 
@@ -225,6 +247,7 @@ void init_translation()
     monStr2monId["mon_sewer_fish"] = mon_sewer_fish; monStr2monId["mon_sewer_snake"] = mon_sewer_snake; monStr2monId["mon_sewer_rat"] = mon_sewer_rat; monStr2monId["mon_rat_king"] = mon_rat_king;
     monStr2monId["mon_mosquito"] = mon_mosquito; monStr2monId["mon_dragonfly"] = mon_dragonfly; monStr2monId["mon_centipede"] = mon_centipede; monStr2monId["mon_frog"] = mon_frog; monStr2monId["mon_slug"] = mon_slug;
     monStr2monId["mon_dermatik_larva"] = mon_dermatik_larva; monStr2monId["mon_dermatik"] = mon_dermatik;
+    monStr2monId["mon_jabberwock"] = mon_jabberwock;
     monStr2monId["mon_spider_wolf"] = mon_spider_wolf; monStr2monId["mon_spider_web"] = mon_spider_web; monStr2monId["mon_spider_jumping"] = mon_spider_jumping; monStr2monId["mon_spider_trapdoor"] = mon_spider_trapdoor;
     monStr2monId["mon_spider_widow"] = mon_spider_widow;
     monStr2monId["mon_dark_wyrm"] = mon_dark_wyrm; monStr2monId["mon_amigara_horror"] = mon_amigara_horror; monStr2monId["mon_dog_thing"] = mon_dog_thing; monStr2monId["mon_headless_dog_thing"] = mon_headless_dog_thing;

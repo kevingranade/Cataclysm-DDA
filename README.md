@@ -5,12 +5,9 @@ Cataclysm: Dark Days Ahead is a roguelike set in a post-apocalyptic world. While
 
 ## Download
 
-The following binary releases are available:
+Visit [our website](http://en.cataclysmdda.com/) for download links to all stable and experimental releases
 
- * [Windows Executable](http://www.cataclysmdda.com/Downloads/CataDDA0.4.zip)
- * [OS X 10.6+ Executable](http://www.cataclysm.glyphgryph.com/Downloads/CataDDA0.4.tar.gz)
-
-The source can either be downloaded as [an archive](https://github.com/TheDarklingWolf/Cataclysm-DDA/archive/master.zip), or you can clone it from [our GitHub repository](https://github.com/TheDarklingWolf/Cataclysm-DDA/).
+The source can either be downloaded as [an archive](https://github.com/CleverRaven/Cataclysm-DDA/archive/master.zip), or you can clone it from [our GitHub repository](https://github.com/CleverRaven/Cataclysm-DDA/).
 
 
 ## Compile
@@ -20,7 +17,7 @@ The latest instructions on how to compile can be found on [our wiki](http://www.
 
 ## Contribute
 
-Please see [CONTRIBUTING.md](https://github.com/TheDarklingWolf/Cataclysm-DDA/blob/master/CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING.md](https://github.com/CleverRaven/Cataclysm-DDA/blob/master/CONTRIBUTING.md) for details.
 
 
 ## Frequently Asked Questions
@@ -35,8 +32,8 @@ Press the `?` key, followed by the `1` key to see the full list of key commands.
 
 #### How can I start a new world?
 
-Simply delete the **save** folder, which can be found in the same directory as the executable.
+**Reset** on the main menu will generate a fresh world for you.
 
 #### I've found a bug / I would like to make a suggestion. What should I do?
 
-Please submit an issue on [our GitHub page](https://github.com/TheDarklingWolf/Cataclysm-DDA/issues/). If you're not able to, send an email to `TheDarklingWolf@gmail.com`.
+Please submit an issue on [our GitHub page](https://github.com/CleverRaven/Cataclysm-DDA/issues/). If you're not able to, send an email to `kevin.granade@gmail.com`.

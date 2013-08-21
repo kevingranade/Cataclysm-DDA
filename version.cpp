@@ -1,11 +1,15 @@
-#if (defined _WIN32 || defined WINDOWS || defined MINGW)
+#if (defined _WIN32 || defined WINDOWS || defined MINGW) && ! defined CROSS_LINUX && !defined _MSC_VER
 
-#define VERSION "0.4-git" // FIXME: automatically generate VERSION based on git
+#ifndef VERSION
+#define VERSION "0.7.1" // FIXME: automatically generate VERSION based on git
+#endif
 
 #else
 
 #include "version.h"
 
 #endif
+
+#include "get_version.h"
 
 const char* getVersionString() { return VERSION; }

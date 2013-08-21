@@ -1,9 +1,12 @@
 #ifndef __CATACURSE__
 #define __CATACURSE__
+#if (defined _WIN32 || defined WINDOWS)
 #define _WIN32_WINNT 0x0500
 #define WIN32_LEAN_AND_MEAN
 //#define VC_EXTRALEAN
-#include <windows.h>
+#include "windows.h"
+#include "mmsystem.h"
+#endif
 #include <stdio.h>
 typedef int	chtype;
 typedef unsigned short	attr_t;
@@ -43,6 +46,7 @@ typedef struct
 typedef struct{
 bool touched;
 char *chars;
+int width_in_bytes;
 char *FG;
 char *BG;
 //cursechar chars [80];
@@ -97,8 +101,10 @@ typedef struct {
 #define    KEY_RIGHT      0x105    /* right arrow*/
 #define    KEY_HOME       0x106    /* home key */                   //<---------not used
 #define    KEY_BACKSPACE  0x107    /* Backspace */                  //<---------not used
+#define    KEY_F(n)      (0x108+n) /* F1, F2, etc*/
 #define    KEY_NPAGE      0x152    /* page down */
 #define    KEY_PPAGE      0x153    /* page up */
+#define    KEY_ENTER      0x157    /* enter */
 
 /* Curses external declarations. */
 
@@ -116,7 +122,9 @@ int wborder(WINDOW *win, chtype ls, chtype rs, chtype ts, chtype bs, chtype tl, 
 int wrefresh(WINDOW *win);
 int refresh(void);
 int getch(void);
+int wgetch(WINDOW* win);
 int mvgetch(int y, int x);
+int mvwgetch(WINDOW* win, int y, int x);
 int mvwprintw(WINDOW *win, int y, int x, const char *fmt, ...);
 int mvprintw(int y, int x, const char *fmt, ...);
 int werase(WINDOW *win);
@@ -125,6 +133,7 @@ int init_pair(short pair, short f, short b);
 int wmove(WINDOW *win, int y, int x);
 int getnstr(char *str, int size);
 int clear(void);
+int clearok(WINDOW *win);
 int erase(void);
 int endwin(void);
 int mvwaddch(WINDOW *win, int y, int x, const chtype ch);
@@ -150,10 +159,14 @@ void timeout(int delay);//PORTABILITY, DUMMY FUNCTION
 void set_escdelay(int delay);//PORTABILITY, DUMMY FUNCTION
 int echo(void);
 int noecho(void);
-//Window Functions, Do not call these outside of catacurse.cpp
-void WinDestroy();
-bool WinCreate(bool initgl);
-void CheckMessages();
-int FindWin(WINDOW *wnd);
-LRESULT CALLBACK ProcessMessages(HWND__ *hWnd,u_int32_t Msg,WPARAM wParam, LPARAM lParam);
+//non-curses functions, Do not call these in the main game code
+extern WINDOW* mainwin;
+extern pairs *colorpairs;
+WINDOW* curses_init();
+int curses_destroy();
+void curses_drawwindow(WINDOW* win);
+void curses_delay(int delay);
+void curses_timeout(int t);
+int curses_getch(WINDOW* win);
+int curses_start_color();
 #endif

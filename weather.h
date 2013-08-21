@@ -80,9 +80,17 @@ struct weather_datum
 };
 
 extern std::string season_name[4];
-extern weather_datum weather_data[];
+extern weather_datum weather_data[NUM_WEATHER_TYPES];
 extern int weather_shift[4][NUM_WEATHER_TYPES][NUM_WEATHER_TYPES];
 
 std::string weather_forecast(game *g, radio_tower tower);
+
+// Returns input value (in fahrenheit) converted to whatever temperature scale set in options.
+//
+// If scale is Celsius:    temperature(100) will return "37C"
+// If scale is Fahrenheit: temperature(100) will return "100F"
+//
+// Use the decimals parameter to set number of decimal places returned in string.
+std::string print_temperature(float fahrenheit, int decimals = 0);
 
 #endif // _WEATHER_H_

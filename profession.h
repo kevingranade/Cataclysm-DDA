@@ -6,6 +6,7 @@
 #include <map>
 #include "pldata.h"
 #include "addiction.h"
+#include "skill.h"
 
 class profession;
 
@@ -13,6 +14,9 @@ typedef std::map<std::string, profession> profmap;
 
 class profession
 {
+public:
+    typedef std::pair<std::string, int> StartingSkill;
+    typedef std::vector<StartingSkill> StartingSkillList;
 private:
     unsigned int _id; // used when we care about precise order, starts at 1
     std::string _ident;
@@ -21,9 +25,14 @@ private:
     signed int _point_cost;
     std::vector<std::string> _starting_items;
     std::vector<addiction> _starting_addictions;
+    std::set<std::string> flags;		// flags for some special properties of the profession
+    StartingSkillList  _starting_skills;
 
     void add_item(std::string item);
     void add_addiction(add_type, int);
+    // Starting skills will boost the players level in those skills by a 
+    // given amount.
+    void add_skill(const std::string& skill_name, const int level);
 public:
     //these three aren't meant for external use, but had to be made public regardless
     profession();
@@ -49,6 +58,23 @@ public:
     signed int point_cost() const;
     std::vector<std::string> items() const;
     std::vector<addiction> addictions() const;
+    const StartingSkillList skills() const;
+
+    /**
+     * Check if this type of profession has a certain flag set.
+     *
+     * Current flags: none
+     */
+    bool has_flag(std::string flag) const;
+
+    /**
+     * Check if the given player can pick this job with the given amount
+     * of points.
+     *
+     * @return "YES", or otherwise the reason for failure, e.g. "INSUFFICIENT_POINTS"
+     */
+    std::string can_pick(player* u, int points) const;
+
 };
 
 #endif

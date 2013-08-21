@@ -10,7 +10,7 @@ catajson::catajson()
     path_msg = "";
 }
 
-catajson::catajson(std::string path)
+catajson::catajson(std::string path, bool is_static)
 {
     std::ifstream file;
     file.open(path.c_str());
@@ -21,7 +21,13 @@ catajson::catajson(std::string path)
 
     std::string err = picojson::get_last_error();
     if (! err.empty()) {
-        debugmsg("Parse error in %s.\n\nERROR: %s\n", path.c_str(), err.c_str());
+        if(is_static)
+        {
+            std::cout << "Parse error in " << path << std::endl << "ERROR: " << err;
+            exit(1);
+        }
+        else
+            debugmsg("Parse error in %s.\n\nERROR: %s", path.c_str(), err.c_str());
     }
 }
 
@@ -89,6 +95,24 @@ double catajson::as_double() const
         debugmsg("JSON error at %s: value is not numeric", path_msg.c_str());
     }
     return 0;
+}
+
+std::set<std::string> catajson::as_tags()
+{
+    std::set<std::string> tags;
+    if (is_array())
+    {
+        for (set_begin(); has_curr(); next())
+        {
+            tags.insert( curr().as_string() );
+        }
+    }
+    else
+    {
+        // We should have gotten a string, if not an array.
+        tags.insert( as_string() );
+    }
+    return tags;
 }
 
 catajson catajson::get(std::string key) const

@@ -5,6 +5,8 @@
 #include "game.h"
 #include "rng.h"
 #include "item.h"
+#include "item_factory.h"
+#include "translations.h"
 #include <sstream>
 #include <fstream>
 #include <stdlib.h>
@@ -32,6 +34,7 @@ monster::monster()
  morale = 2;
  faction_id = -1;
  mission_id = -1;
+ no_extra_death_drops = false;
  dead = false;
  made_footstep = false;
  unique_name = "";
@@ -58,6 +61,7 @@ monster::monster(mtype *t)
  morale = t->morale;
  faction_id = -1;
  mission_id = -1;
+ no_extra_death_drops = false;
  dead = false;
  made_footstep = false;
  unique_name = "";
@@ -84,6 +88,7 @@ monster::monster(mtype *t, int x, int y)
  morale = type->morale;
  faction_id = -1;
  mission_id = -1;
+ no_extra_death_drops = false;
  dead = false;
  made_footstep = false;
  unique_name = "";
@@ -122,23 +127,26 @@ std::string monster::name()
  return type->name;
 }
 
+// MATERIALS-TODO: put description in materials.json?
 std::string monster::name_with_armor()
 {
- std::string ret = type->name;
- if (type->species == species_insect)
-  ret += "'s carapace";
+ std::string ret;
+ if (type->species == species_insect) {
+     ret = string_format(_("%s's carapace"), type->name.c_str());
+ }
  else {
-  switch (type->mat) {
-   case VEGGY: ret += "'s thick bark";    break;
-   case FLESH: ret += "'s thick hide";    break;
-   case IRON:
-   case STEEL: ret += "'s armor plating"; break;
-  }
+     if (type->mat == "veggy") {
+         ret = string_format(_("%s's thick bark"), type->name.c_str());
+     } else if (type->mat == "flesh" || type->mat == "hflesh") {
+         ret = string_format(_("%s's thick hide"), type->name.c_str());
+     } else if (type->mat == "iron" || type->mat == "steel") {
+         ret = string_format(_("%s's armor plating"), type->name.c_str());
+     }
  }
  return ret;
 }
 
-void monster::print_info(game *g, WINDOW* w, int vStart) 
+void monster::print_info(game *g, WINDOW* w, int vStart)
 {
 // First line of w is the border; the next two are terrain info, and after that
 // is a blank line. w is 13 characters tall, and we can't use the last one
@@ -146,67 +154,64 @@ void monster::print_info(game *g, WINDOW* w, int vStart)
 // w is also 48 characters wide - 2 characters for border = 46 characters for us
 // vStart added because 'help' text in targeting win makes helpful info hard to find
 // at a glance.
+
+ const int vEnd = vStart + 5; // TODO: parameterize this
+
  mvwprintz(w, vStart, 1, c_white, "%s ", type->name.c_str());
  switch (attitude(&(g->u))) {
   case MATT_FRIEND:
-   wprintz(w, h_white, "Friendly! ");
+   wprintz(w, h_white, _("Friendly! "));
    break;
   case MATT_FLEE:
-   wprintz(w, c_green, "Fleeing! ");
+   wprintz(w, c_green, _("Fleeing! "));
    break;
   case MATT_IGNORE:
-   wprintz(w, c_ltgray, "Ignoring ");
+   wprintz(w, c_ltgray, _("Ignoring "));
    break;
   case MATT_FOLLOW:
-   wprintz(w, c_yellow, "Tracking ");
+   wprintz(w, c_yellow, _("Tracking "));
    break;
   case MATT_ATTACK:
-   wprintz(w, c_red, "Hostile! ");
+   wprintz(w, c_red, _("Hostile! "));
    break;
   default:
    wprintz(w, h_red, "BUG: Behavior unnamed. (monster.cpp:print_info)");
    break;
  }
  if (has_effect(ME_DOWNED))
-  wprintz(w, h_white, "On ground");
+  wprintz(w, h_white, _("On ground"));
  else if (has_effect(ME_STUNNED))
-  wprintz(w, h_white, "Stunned");
+  wprintz(w, h_white, _("Stunned"));
  else if (has_effect(ME_BEARTRAP))
-  wprintz(w, h_white, "Trapped");
+  wprintz(w, h_white, _("Trapped"));
  std::string damage_info;
  nc_color col;
  if (hp == type->hp) {
-  damage_info = "It is uninjured";
+  damage_info = _("It is uninjured");
   col = c_green;
  } else if (hp >= type->hp * .8) {
-  damage_info = "It is lightly injured";
+  damage_info = _("It is lightly injured");
   col = c_ltgreen;
  } else if (hp >= type->hp * .6) {
-  damage_info = "It is moderately injured";
+  damage_info = _("It is moderately injured");
   col = c_yellow;
  } else if (hp >= type->hp * .3) {
-  damage_info = "It is heavily injured";
+  damage_info = _("It is heavily injured");
   col = c_yellow;
  } else if (hp >= type->hp * .1) {
-  damage_info = "It is severly injured";
+  damage_info = _("It is severly injured");
   col = c_ltred;
  } else {
-  damage_info = "it is nearly dead";
+  damage_info = _("it is nearly dead");
   col = c_red;
  }
  mvwprintz(w, vStart+1, 1, col, damage_info.c_str());
 
- std::string tmp = type->description;
- std::string out;
- size_t pos;
- int line = vStart+2;
- do {
-  pos = tmp.find_first_of('\n');
-  out = tmp.substr(0, pos);
-  mvwprintz(w, line, 1, c_white, out.c_str());
-  tmp = tmp.substr(pos + 1);
-  line++;
- } while (pos != std::string::npos && line < vStart+6);
+    int line = vStart + 2;
+    std::vector<std::string> lines = foldstring(type->description, getmaxx(w) - 2);
+    int numlines = lines.size();
+    for (int i = 0; i < numlines && line <= vEnd; i++, line++)
+        mvwprintz(w, line, 1, c_white, lines[i].c_str());
 }
 
 char monster::symbol()
@@ -258,7 +263,7 @@ bool monster::can_hear()
  return has_flag(MF_HEARS) && !has_effect(ME_DEAF);
 }
 
-bool monster::made_of(material m)
+bool monster::made_of(std::string m)
 {
  if (type->mat == m)
   return true;
@@ -279,9 +284,10 @@ void monster::load_info(std::string data, std::vector <mtype*> *mtypes)
  dump << data;
  dump >> idtmp >> posx >> posy >> wandx >> wandy >> wandf >> moves >> speed >>
          hp >> sp_timeout >> plansize >> friendly >> faction_id >> mission_id >>
-         dead >> anger >> morale;
+         no_extra_death_drops >> dead >> anger >> morale;
  type = (*mtypes)[idtmp];
  point ptmp;
+ plans.clear();
  for (int i = 0; i < plansize; i++) {
   dump >> ptmp.x >> ptmp.y;
   plans.push_back(ptmp);
@@ -290,16 +296,17 @@ void monster::load_info(std::string data, std::vector <mtype*> *mtypes)
 
 std::string monster::save_info()
 {
- std::stringstream pack;
- pack << int(type->id) << " " << posx << " " << posy << " " << wandx << " " <<
-         wandy << " " << wandf << " " << moves << " " << speed << " " << hp <<
-         " " << sp_timeout << " " << plans.size() << " " << friendly << " " <<
-          faction_id << " " << mission_id << " " << dead << " " << anger <<
-         " " << morale;
- for (int i = 0; i < plans.size(); i++) {
-  pack << " " << plans[i].x << " " << plans[i].y;
- }
- return pack.str();
+    std::stringstream pack;
+    pack << int(type->id) << " " << posx << " " << posy << " " << wandx << " " <<
+        wandy << " " << wandf << " " << moves << " " << speed << " " << hp <<
+        " " << sp_timeout << " " << plans.size() << " " << friendly << " " <<
+        faction_id << " " << mission_id << " " << no_extra_death_drops << " " <<
+        dead << " " << anger << " " << morale;
+    for (int i = 0; i < plans.size(); i++) {
+        pack << " " << plans[i].x << " " << plans[i].y;
+    }
+
+    return pack.str();
 }
 
 void monster::debug(player &u)
@@ -347,15 +354,15 @@ monster_attitude monster::attitude(player *u)
 
  if (u != NULL) {
 
-  if (((type->species == species_mammal && u->has_trait(PF_PHEROMONE_MAMMAL)) ||
-       (type->species == species_insect && u->has_trait(PF_PHEROMONE_INSECT)))&&
+  if (((type->species == species_mammal && u->has_trait("PHEROMONE_MAMMAL")) ||
+       (type->species == species_insect && u->has_trait("PHEROMONE_INSECT")))&&
       effective_anger >= 10)
    effective_anger -= 20;
 
-  if (u->has_trait(PF_TERRIFYING))
+  if (u->has_trait("TERRIFYING"))
    effective_morale -= 10;
 
-  if (u->has_trait(PF_ANIMALEMPATH) && has_flag(MF_ANIMAL)) {
+  if (u->has_trait("ANIMALEMPATH") && has_flag(MF_ANIMAL)) {
    if (effective_anger >= 10)
     effective_anger -= 10;
    if (effective_anger < 10)
@@ -465,8 +472,8 @@ int monster::trigger_sum(game *g, std::vector<monster_trigger> *triggers)
      }
     }
     if (check_fire) {
-     if (g->m.field_at(x, y).type == fd_fire)
-      ret += 5 * g->m.field_at(x, y).density;
+     if (g->m.field_at(x, y).findField(fd_fire))
+      ret += 5 * g->m.field_at(x, y).findField(fd_fire)->getFieldDensity();
     }
    }
   }
@@ -481,7 +488,7 @@ int monster::trigger_sum(game *g, std::vector<monster_trigger> *triggers)
 
 int monster::hit(game *g, player &p, body_part &bp_hit) {
  int ret = 0;
- int highest_hit;
+ int highest_hit = 0;
  switch (type->size) {
  case MS_TINY:
   highest_hit = 3;
@@ -529,9 +536,9 @@ int monster::hit(game *g, player &p, body_part &bp_hit) {
 void monster::hit_monster(game *g, int i)
 {
  monster* target = &(g->z[i]);
+ moves -= 100;
 
  if (this == target) {
-  debugmsg("stopped monster from hitting itself");
   return;
  }
 
@@ -546,24 +553,29 @@ void monster::hit_monster(game *g, int i)
 
  if (dice(numdice, 10) <= dice(dodgedice, 10)) {
   if (g->u_see(this))
-   g->add_msg("The %s misses the %s!", name().c_str(), target->name().c_str());
+   g->add_msg(_("The %s misses the %s!"), name().c_str(), target->name().c_str());
   return;
  }
  if (g->u_see(this))
-  g->add_msg("The %s hits the %s!", name().c_str(), target->name().c_str());
+  g->add_msg(_("The %s hits the %s!"), name().c_str(), target->name().c_str());
  int damage = dice(type->melee_dice, type->melee_sides);
  if (target->hurt(damage))
   g->kill_mon(i, (friendly != 0));
 }
 
 
-bool monster::hurt(int dam)
+bool monster::hurt(int dam, int real_dam)
 {
  hp -= dam;
- if (hp < 1)
-  return true;
- if (dam > 0)
-  process_trigger(MTRIG_HURT, 1 + int(dam / 3));
+ if( real_dam > 0 ) {
+     hp = std::max( hp, -real_dam );
+ }
+ if (hp < 1) {
+     return true;
+ }
+ if (dam > 0) {
+     process_trigger(MTRIG_HURT, 1 + int(dam / 3));
+ }
  return false;
 }
 
@@ -624,51 +636,27 @@ void monster::die(game *g)
 {
  if (!dead)
   dead = true;
-// Drop goodies
- int total_chance = 0, total_it_chance, cur_chance, selected_location,
-     selected_item;
- bool animal_done = false;
- std::vector<items_location_and_chance> it = g->monitems[type->id];
- std::vector<itype_id> mapit;
- if (type->item_chance != 0 && it.size() == 0)
-  debugmsg("Type %s has item_chance %d but no items assigned!",
-           type->name.c_str(), type->item_chance);
- else {
-  for (int i = 0; i < it.size(); i++)
-   total_chance += it[i].chance;
-
-  while (rng(0, 99) < abs(type->item_chance) && !animal_done) {
-   cur_chance = rng(1, total_chance);
-   selected_location = -1;
-   while (cur_chance > 0) {
-    selected_location++;
-    cur_chance -= it[selected_location].chance;
-   }
-   total_it_chance = 0;
-   mapit = g->mapitems[it[selected_location].loc];
-   for (int i = 0; i < mapit.size(); i++)
-    total_it_chance += g->itypes[mapit[i]]->rarity;
-   cur_chance = rng(1, total_it_chance);
-   selected_item = -1;
-   while (cur_chance > 0) {
-    selected_item++;
-    cur_chance -= g->itypes[mapit[selected_item]]->rarity;
-   }
-   g->m.spawn_item(posx, posy, g->itypes[mapit[selected_item]], 0);
-   if (type->item_chance < 0)
-    animal_done = true;	// Only drop ONE item.
-  }
- } // Done dropping items
+ if (!no_extra_death_drops) {
+  drop_items_on_death(g);
+ }
 
 // If we're a queen, make nearby groups of our type start to die out
  if (has_flag(MF_QUEEN)) {
 // Do it for overmap above/below too
   for(int z = 0; z >= -1; --z) {
-   std::vector<mongroup*> groups = g->cur_om.monsters_at(g->levx, g->levy, z);
-   for (int i = 0; i < groups.size(); i++) {
-   if (MonsterGroupManager::IsMonsterInGroup(groups[i]->type, mon_id(type->id)))
-    groups[i]->dying = true;
-   }
+      for (int x = -MAPSIZE/2; x <= MAPSIZE/2; x++)
+      {
+          for (int y = -MAPSIZE/2; y <= MAPSIZE/2; y++)
+          {
+                 std::vector<mongroup*> groups =
+                     g->cur_om->monsters_at(g->levx+x, g->levy+y, z);
+                 for (int i = 0; i < groups.size(); i++) {
+                     if (MonsterGroupManager::IsMonsterInGroup
+                         (groups[i]->type, mon_id(type->id)))
+                         groups[i]->dying = true;
+                 }
+          }
+      }
   }
  }
 // If we're a mission monster, update the mission
@@ -706,6 +694,45 @@ void monster::die(game *g)
    }
   }
  }
+}
+
+void monster::drop_items_on_death(game *g)
+{
+    int total_chance = 0, cur_chance, selected_location;
+    bool animal_done = false;
+    std::vector<items_location_and_chance> it = g->monitems[type->id];
+    if (type->item_chance != 0 && it.size() == 0)
+    {
+        debugmsg("Type %s has item_chance %d but no items assigned!",
+                 type->name.c_str(), type->item_chance);
+        return;
+    }
+
+    for (int i = 0; i < it.size(); i++)
+    {
+        total_chance += it[i].chance;
+    }
+
+    while (rng(0, 99) < abs(type->item_chance) && !animal_done)
+    {
+        cur_chance = rng(1, total_chance);
+        selected_location = -1;
+        while (cur_chance > 0)
+        {
+            selected_location++;
+            cur_chance -= it[selected_location].chance;
+        }
+
+        // We have selected a string representing an item group, now
+        // get a random item tag from it and spawn it.
+        Item_tag selected_item = item_controller->id_from(it[selected_location].loc);
+        g->m.spawn_item(posx, posy, selected_item, 0);
+
+        if (type->item_chance < 0)
+        {
+            animal_done = true; // Only drop ONE item.
+        }
+    }
 }
 
 void monster::add_effect(monster_effect_type effect, int duration)
@@ -747,13 +774,14 @@ void monster::process_effects(game *g)
    hurt(rng(1, 3));
    break;
 
+// MATERIALS-TODO: use fire resistance
   case ME_ONFIRE:
-   if (made_of(FLESH))
+   if (made_of("flesh"))
     hurt(rng(3, 8));
-   if (made_of(VEGGY))
+   if (made_of("veggy"))
     hurt(rng(10, 20));
-   if (made_of(PAPER) || made_of(POWDER) || made_of(WOOD) || made_of(COTTON) ||
-       made_of(WOOL))
+   if (made_of("paper") || made_of("powder") || made_of("wood") || made_of("cotton") ||
+       made_of("wool"))
     hurt(rng(15, 40));
    break;
 

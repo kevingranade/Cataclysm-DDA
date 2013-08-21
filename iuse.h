@@ -18,14 +18,11 @@ class iuse
   void royal_jelly	(game *g, player *p, item *it, bool t);
   void bandage		(game *g, player *p, item *it, bool t);
   void firstaid		(game *g, player *p, item *it, bool t);
+  void disinfectant (game *g, player *p, item *it, bool t);
   void caff		(game *g, player *p, item *it, bool t);
   void alcohol		(game *g, player *p, item *it, bool t);
   void alcohol_weak (game *g, player *p, item *it, bool t);
-  void pkill_1		(game *g, player *p, item *it, bool t);
-  void pkill_2		(game *g, player *p, item *it, bool t);
-  void pkill_3		(game *g, player *p, item *it, bool t);
-  void pkill_4		(game *g, player *p, item *it, bool t);
-  void pkill_l		(game *g, player *p, item *it, bool t);
+  void pkill		(game *g, player *p, item *it, bool t);
   void xanax		(game *g, player *p, item *it, bool t);
   void cig		(game *g, player *p, item *it, bool t);
   void antibiotic		(game *g, player *p, item *it, bool t);
@@ -34,6 +31,8 @@ class iuse
   void crack		(game *g, player *p, item *it, bool t);
   void grack		(game *g, player *p, item *it, bool t);
   void meth		(game *g, player *p, item *it, bool t);
+  void vitamins		(game *g, player *p, item *it, bool t);
+  void vaccine		(game *g, player *p, item *it, bool t);
   void poison		(game *g, player *p, item *it, bool t);
   void hallu		(game *g, player *p, item *it, bool t);
   void thorazine	(game *g, player *p, item *it, bool t);
@@ -45,7 +44,6 @@ class iuse
   void inhaler		(game *g, player *p, item *it, bool t);
   void blech		(game *g, player *p, item *it, bool t);
   void mutagen		(game *g, player *p, item *it, bool t);
-  void mutagen_3	(game *g, player *p, item *it, bool t);
   void purifier		(game *g, player *p, item *it, bool t);
   void marloss		(game *g, player *p, item *it, bool t);
   void dogfood		(game *g, player *p, item *it, bool t);
@@ -60,11 +58,14 @@ class iuse
   void hammer		(game *g, player *p, item *it, bool t);
   void light_off	(game *g, player *p, item *it, bool t);
   void light_on		(game *g, player *p, item *it, bool t);
+  void gasoline_lantern_off	(game *g, player *p, item *it, bool t);
+  void gasoline_lantern_on	(game *g, player *p, item *it, bool t);
   void lightstrip		(game *g, player *p, item *it, bool t);
   void lightstrip_active(game *g, player *p, item *it, bool t);
   void glowstick		(game *g, player *p, item *it, bool t);
   void glowstick_active(game *g, player *p, item *it, bool t);
   void cauterize_elec	(game *g, player *p, item *it, bool t);
+  void solder_weld	    (game *g, player *p, item *it, bool t);
   void water_purifier	(game *g, player *p, item *it, bool t);
   void two_way_radio	(game *g, player *p, item *it, bool t);
   void directional_antenna	(game *g, player *p, item *it, bool t);
@@ -79,8 +80,17 @@ class iuse
   void crowbar		(game *g, player *p, item *it, bool t);
   void makemound	(game *g, player *p, item *it, bool t);
   void dig		(game *g, player *p, item *it, bool t);
+  void siphon	(game *g, player *p, item *it, bool t);
   void chainsaw_off	(game *g, player *p, item *it, bool t);
   void chainsaw_on	(game *g, player *p, item *it, bool t);
+  void shishkebab_off	(game *g, player *p, item *it, bool t);
+  void shishkebab_on	(game *g, player *p, item *it, bool t);
+  void firemachete_off	(game *g, player *p, item *it, bool t);
+  void firemachete_on	(game *g, player *p, item *it, bool t);
+  void broadfire_off	(game *g, player *p, item *it, bool t);
+  void broadfire_on	    (game *g, player *p, item *it, bool t);
+  void firekatana_off	(game *g, player *p, item *it, bool t);
+  void firekatana_on	(game *g, player *p, item *it, bool t);
   void jackhammer	(game *g, player *p, item *it, bool t);
   void jacqueshammer	(game *g, player *p, item *it, bool t);
   void pickaxe          (game *g, player *p, item *it, bool t);
@@ -105,6 +115,7 @@ class iuse
   void smokebomb	(game *g, player *p, item *it, bool t);
   void smokebomb_act	(game *g, player *p, item *it, bool t);
   void acidbomb		(game *g, player *p, item *it, bool t);
+  void arrow_flamable (game *g, player *p, item *it, bool t);
   void acidbomb_act	(game *g, player *p, item *it, bool t);
   void molotov		(game *g, player *p, item *it, bool t);
   void molotov_lit	(game *g, player *p, item *it, bool t);
@@ -122,13 +133,17 @@ class iuse
   void turret		(game *g, player *p, item *it, bool t);
   void UPS_off		(game *g, player *p, item *it, bool t);
   void UPS_on		(game *g, player *p, item *it, bool t);
+  void adv_UPS_off		(game *g, player *p, item *it, bool t);
+  void adv_UPS_on		(game *g, player *p, item *it, bool t);
   void tazer		(game *g, player *p, item *it, bool t);
   void mp3		(game *g, player *p, item *it, bool t);
   void mp3_on		(game *g, player *p, item *it, bool t);
+  void portable_game    (game *g, player *p, item *it, bool t);
   void vortex		(game *g, player *p, item *it, bool t);
   void dog_whistle	(game *g, player *p, item *it, bool t);
   void vacutainer	(game *g, player *p, item *it, bool t);
   void knife    	(game *g, player *p, item *it, bool t);
+  static void cut_log_into_planks(game *g, player *p, item *it);
   void lumber    	(game *g, player *p, item *it, bool t);
   void hacksaw          (game *g, player *p, item *it, bool t);
   void tent             (game *g, player *p, item *it, bool t);
@@ -147,8 +162,11 @@ class iuse
   void LAW              (game *g, player *p, item *it, bool t);
   void heatpack			(game *g, player *p, item *it, bool t);
   void dejar            (game *g, player *p, item *it, bool t);
-  void devac            (game *g, player *p, item *it, bool t);
-
+  void rad_badge        (game *g, player *p, item *it, bool t);
+  void boots            (game *g, player *p, item *it, bool t);
+  void towel            (game *g, player *p, item *it, bool t);
+  void unfold_bicycle        (game *g, player *p, item *it, bool t);
+  void adrenaline_injector (game *g, player *p, item *it, bool t);
 // MACGUFFINS
   void mcg_note		(game *g, player *p, item *it, bool t);
 // ARTIFACTS

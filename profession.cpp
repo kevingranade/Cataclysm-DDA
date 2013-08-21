@@ -8,12 +8,8 @@
 #include "catajson.h"
 
 profession::profession()
+   : _id(0), _ident(""), _name("null"), _description("null"), _point_cost(0)
 {
-    _id = 0;
-    _ident = "";
-    _name = "null";
-    _description = "null";
-    _point_cost = 0;
 }
 
 profession::profession(unsigned int id, std::string ident, std::string name, std::string description, signed int points)
@@ -25,15 +21,20 @@ profession::profession(unsigned int id, std::string ident, std::string name, std
     _point_cost = points;
 }
 
-profmap profession::_all_profs(profession::load_professions());
+profmap profession::_all_profs;
+
+void game::init_professions()
+{
+    profession::_all_profs = profession::load_professions();
+}
 
 profmap profession::load_professions()
 {
     profmap allProfs;
-    catajson profsRaw("data/raw/professions.json");
+    catajson profsRaw("data/raw/professions.json",true);
 
     unsigned int id = 0;
-    for (profsRaw.set_begin(); profsRaw.has_curr(); profsRaw.next())
+    for (profsRaw.set_begin(); profsRaw.has_curr() && json_good(); profsRaw.next())
     {
         ++id;
         catajson currProf = profsRaw.curr();
@@ -41,6 +42,9 @@ profmap profession::load_professions()
         std::string name = currProf.get("name").as_string();
         std::string description = currProf.get("description").as_string();
         signed int points = currProf.get("points").as_int();
+
+        name = _(name.c_str());
+        description = _(description.c_str());
 
         profession newProfession(id, ident, name, description, points);
 
@@ -63,9 +67,34 @@ profmap profession::load_professions()
                 newProfession.add_addiction(type,intensity);
             }
         }
-
+        // Skills are optional as well
+        if (currProf.has("skills"))
+        {
+            catajson skills = currProf.get("skills");
+            for (skills.set_begin(); skills.has_curr(); skills.next())
+            {
+                catajson currSkill = skills.curr();
+                std::string skill_str = currSkill.get("name").as_string();
+                // Verifying this skill exists MUST happen later since the
+                // skills have not yet been loaded at this point.
+                int level = currSkill.get("level").as_int();
+                newProfession.add_skill(skill_str, level);
+            }
+        }
+        // Optional flags
+        if (currProf.has("flags"))
+        {
+            catajson cflags = currProf.get("flags");
+            for (cflags.set_begin(); cflags.has_curr(); cflags.next())
+            {
+                newProfession.flags.insert(cflags.curr().as_string());
+            }
+        }
         allProfs[ident] = newProfession;
     }
+
+    if(!json_good())
+        exit(1);
 
     return allProfs;
 }
@@ -123,6 +152,10 @@ void profession::add_addiction(add_type type,int intensity)
 {
     _starting_addictions.push_back(addiction(type,intensity));
 }
+void profession::add_skill(const std::string& skill_name, const int level)
+{
+    _starting_skills.push_back(StartingSkill(skill_name, level));
+}
 
 unsigned int profession::id() const
 {
@@ -158,3 +191,18 @@ std::vector<addiction> profession::addictions() const
 {
     return _starting_addictions;
 }
+const profession::StartingSkillList profession::skills() const
+{
+    return _starting_skills;
+}
+
+bool profession::has_flag(std::string flag) const {
+    return flags.count(flag) != 0;
+}
+
+std::string profession::can_pick(player* u, int points) const {
+    std::string rval = "YES";
+    if(point_cost() - u->prof->point_cost() > points) rval = "INSUFFICIENT_POINTS";
+    return rval;
+}
+// vim:ts=4:sw=4:et:tw=0:fdm=marker:fdl=0:

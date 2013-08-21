@@ -36,18 +36,24 @@ public:
  void remove_fence_wire (game *g, player *p, map *m, int examx, int examy);
  void remove_fence_barbed (game *g, player *p, map *m, int examx, int examy);
  void slot_machine (game *g, player *p, map *m, int examx, int examy);
+ void safe (game *g, player *p, map *m, int examx, int examy);
  void bulletin_board (game *g, player *p, map *m, int examx, int examy);
  void fault (game *g, player *p, map *m, int examx, int examy);
  void pedestal_wyrm (game *g, player *p, map *m, int examx, int examy);
  void pedestal_temple (game *g, player *p, map *m, int examx, int examy);
  void fswitch (game *g, player *p, map *m, int examx, int examy);
  void flower_poppy (game *g, player *p, map *m, int examx, int examy);
+ void dirtmound (game *g, player *p, map *m, int examx, int examy);
+ void aggie_plant (game *g, player *p, map *m, int examx, int examy);
+ void pick_plant(game *g, player *p, map *m, int examx, int examy, std::string itemType, int new_ter, bool seeds = false);
  void tree_apple (game *g, player *p, map *m, int examx, int examy);
  void shrub_blueberry (game *g, player *p, map *m, int examx, int examy);
+ void shrub_strawberry (game *g, player *p, map *m, int examx, int examy);
  void shrub_wildveggies (game *g, player *p, map *m, int examx, int examy);
  void recycler (game *g, player *p, map *m, int examx, int examy);
  void trap(game *g, player *p, map *m, int examx, int examy);
  void water_source (game *g, player *p, map *m, const int examx, const int examy);
+ void acid_source (game *g, player *p, map *m, const int examx, const int examy);
 };
 
 #endif /* defined(__Cataclysmic__iexamine__) */

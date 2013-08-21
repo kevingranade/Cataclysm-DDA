@@ -1,6 +1,8 @@
 cataclysm
+cataclysm-tiles
 data/*.template
 save/
+memorial/
 obj/
 debug.log
 logg.txt
@@ -12,3 +14,23 @@ version.h
 Cataclysm.exe
 CataclysmWin.depend
 CataclysmWin.layout
+*.dll
+
+# Visual Studio files
+*.suo
+*.user
+Cataclysm.sdf
+Release*/
+Debug*/
+*.opensdf
+
+# Temporary and backup files
+*~
+\#*
+*.bak
+*.cbTemp
+gmon.out
+
+# System Files
+Thumbs.db
+.DS_Store

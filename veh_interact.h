@@ -53,6 +53,8 @@ private:
     bool has_welder;
     bool has_hacksaw;
     bool has_jack;
+    bool has_siphon;
+    bool has_wheel;
     inventory crafting_inv;
 
     int part_at (int dx, int dy);
@@ -64,6 +66,9 @@ private:
     void do_refill(int reason);
     void do_remove(int reason);
     void do_rename(int reason);
+    void do_siphon(int reason);
+    void do_tirechange(int reason);
+    void do_drain(int reason);
 
     void display_veh ();
     void display_stats ();
@@ -76,7 +81,6 @@ private:
     std::vector<int> parts_here;
     int ptank;
     int wheel;
-    bool obstruct;
     bool has_fuel;
 public:
     veh_interact ();

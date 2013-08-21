@@ -7,24 +7,17 @@
 #include <sstream>
 #include <algorithm>
 
+#include "output.h"
 #include "color.h"
+#include "input.h"
 #include "output.h"
 #include "rng.h"
 #include "keypress.h"
 #include "options.h"
 #include "cursesdef.h"
-
-#define LINE_XOXO 4194424
-#define LINE_OXOX 4194417
-#define LINE_XXOO 4194413
-#define LINE_OXXO 4194412
-#define LINE_OOXX 4194411
-#define LINE_XOOX 4194410
-#define LINE_XXXO 4194420
-#define LINE_XXOX 4194422
-#define LINE_XOXX 4194421
-#define LINE_OXXX 4194423
-#define LINE_XXXX 4194414
+#include "catacharset.h"
+#include "debug.h"
+#include "uistate.h"
 
 // Display data
 int TERMX;
@@ -60,7 +53,7 @@ nc_color hilite(nc_color c)
 
 nc_color invert_color(nc_color c)
 {
- if (OPTIONS[OPT_NO_CBLINK]) {
+ if (OPTIONS["NO_BRIGHT_BACKGROUNDS"]) {
   switch (c) {
    case c_white:
    case c_ltgray:
@@ -121,7 +114,115 @@ nc_color red_background(nc_color c)
  }
  return c_white_red;
 }
+/// colors need to be totally redone, really..
+nc_color white_background(nc_color c) {
+  switch(c) {
+     case c_black: return c_black_white;
+     case c_dkgray: return c_dkgray_white;
+     case c_ltgray: return c_ltgray_white;
+     case c_white: return c_white_white;
+     case c_red: return c_red_white;
+     case c_ltred: return c_ltred_white;
+     case c_green: return c_green_white;
+     case c_ltgreen: return c_ltgreen_white;
+     case c_brown: return c_brown_white;
+     case c_yellow: return c_yellow_white;
+     case c_blue: return c_blue_white;
+     case c_ltblue: return c_ltblue_white;
+     case c_magenta: return c_magenta_white;
+     case c_pink: return c_pink_white;
+     case c_cyan: return c_cyan_white;
+     case c_ltcyan: return c_ltcyan_white;
+     default: return c_black_white;
+   }
+}
+ nc_color green_background(nc_color c) {
+  switch(c) {
+     case c_black: return c_black_green;
+     case c_dkgray: return c_dkgray_green;
+     case c_ltgray: return c_ltgray_green;
+     case c_white: return c_white_green;
+     case c_red: return c_red_green;
+     case c_ltred: return c_ltred_green;
+     case c_green: return c_green_green;
+     case c_ltgreen: return c_ltgreen_green;
+     case c_brown: return c_brown_green;
+     case c_yellow: return c_yellow_green;
+     case c_blue: return c_blue_green;
+     case c_ltblue: return c_ltblue_green;
+     case c_magenta: return c_magenta_green;
+     case c_pink: return c_pink_green;
+     case c_cyan: return c_cyan_green;
+     case c_ltcyan: return c_ltcyan_green;
+     default: return c_black_green;
+   }
+}
+ nc_color yellow_background(nc_color c) {
+  switch(c) {
+     case c_black: return c_black_yellow;
+     case c_dkgray: return c_dkgray_yellow;
+     case c_ltgray: return c_ltgray_yellow;
+     case c_white: return c_white_yellow;
+     case c_red: return c_red_yellow;
+     case c_ltred: return c_ltred_yellow;
+     case c_green: return c_green_yellow;
+     case c_ltgreen: return c_ltgreen_yellow;
+     case c_brown: return c_brown_yellow;
+     case c_yellow: return c_yellow_yellow;
+     case c_blue: return c_blue_yellow;
+     case c_ltblue: return c_ltblue_yellow;
+     case c_magenta: return c_magenta_yellow;
+     case c_pink: return c_pink_yellow;
+     case c_cyan: return c_cyan_yellow;
+     case c_ltcyan: return c_ltcyan_yellow;
+     default: return c_black_yellow;
+   }
+}
+ nc_color magenta_background(nc_color c) {
+  switch(c) {
+     case c_black: return c_black_magenta;
+     case c_dkgray: return c_dkgray_magenta;
+     case c_ltgray: return c_ltgray_magenta;
+     case c_white: return c_white_magenta;
+     case c_red: return c_red_magenta;
+     case c_ltred: return c_ltred_magenta;
+     case c_green: return c_green_magenta;
+     case c_ltgreen: return c_ltgreen_magenta;
+     case c_brown: return c_brown_magenta;
+     case c_yellow: return c_yellow_magenta;
+     case c_blue: return c_blue_magenta;
+     case c_ltblue: return c_ltblue_magenta;
+     case c_magenta: return c_magenta_magenta;
+     case c_pink: return c_pink_magenta;
+     case c_cyan: return c_cyan_magenta;
+     case c_ltcyan: return c_ltcyan_magenta;
+     default: return c_black_magenta;
+   }
+}
+ nc_color cyan_background(nc_color c) {
+  switch(c) {
+     case c_black: return c_black_cyan;
+     case c_dkgray: return c_dkgray_cyan;
+     case c_ltgray: return c_ltgray_cyan;
+     case c_white: return c_white_cyan;
+     case c_red: return c_red_cyan;
+     case c_ltred: return c_ltred_cyan;
+     case c_green: return c_green_cyan;
+     case c_ltgreen: return c_ltgreen_cyan;
+     case c_brown: return c_brown_cyan;
+     case c_yellow: return c_yellow_cyan;
+     case c_blue: return c_blue_cyan;
+     case c_ltblue: return c_ltblue_cyan;
+     case c_magenta: return c_magenta_cyan;
+     case c_pink: return c_pink_cyan;
+     case c_cyan: return c_cyan_cyan;
+     case c_ltcyan: return c_ltcyan_cyan;
+     default: return c_black_cyan;
+   }
+}
 
+
+///
 nc_color rand_color()
 {
  switch (rng(0, 9)) {
@@ -139,6 +240,43 @@ nc_color rand_color()
  return c_dkgray;
 }
 
+// utf8 version
+std::vector<std::string> foldstring ( std::string str, int width ) {
+    std::vector<std::string> lines;
+    if ( width < 1 ) {
+        lines.push_back( str );
+        return lines;
+    }
+    std::stringstream sstr(str);
+    std::string strline;
+    while (std::getline(sstr, strline, '\n')) {
+        std::string wrapped = word_rewrap(strline, width);
+        std::stringstream swrapped(wrapped);
+        std::string wline;
+        while (std::getline(swrapped, wline, '\n')) {
+            lines.push_back(wline);
+        }
+    }
+    return lines;
+}
+
+// returns number of printed lines
+int fold_and_print(WINDOW* w, int begin_y, int begin_x, int width, nc_color color, const char *mes, ...)
+{
+    va_list ap;
+    va_start(ap,mes);
+    char buff[6000];    //TODO replace Magic Number
+    vsprintf(buff, mes, ap);
+    va_end(ap);
+
+    std::vector<std::string> textformatted;
+    textformatted = foldstring(buff, width);
+    for (int line_num=0; line_num<textformatted.size(); line_num++)
+    {
+        mvwprintz(w, line_num+begin_y, begin_x, color, "%s", textformatted[line_num].c_str());
+    }
+    return textformatted.size();
+};
 
 void mvputch(int y, int x, nc_color FG, long ch)
 {
@@ -228,7 +366,7 @@ void printz(nc_color FG, const char *mes, ...)
  vsprintf(buff, mes, ap);
  va_end(ap);
  attron(FG);
- printw("%s", buff); 
+ printw("%s", buff);
  attroff(FG);
 }
 
@@ -330,19 +468,19 @@ void realDebugmsg(const char* filename, const char* line, const char *mes, ...)
 
 bool query_yn(const char *mes, ...)
 {
- bool force_uc = OPTIONS[OPT_FORCE_YN];
+ bool force_uc = OPTIONS["FORCE_CAPITAL_YN"];
  va_list ap;
  va_start(ap, mes);
  char buff[1024];
  vsprintf(buff, mes, ap);
  va_end(ap);
- int win_width = strlen(buff) + 26;
+ int win_width = utf8_width(buff) + 26;
 
  WINDOW *w = newwin(3, win_width, (TERMY-3)/2, (TERMX > win_width) ? (TERMX-win_width)/2 : 0);
 
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- mvwprintz(w, 1, 1, c_ltred, "%s (%s)", buff, (force_uc ? "Y/N - Case Sensitive" : "y/n"));
+ mvwprintz(w, 1, 1, c_ltred, (force_uc ? _("%s (Y/N - Case Sensitive)") : _("%s (y/n)")), buff);
  wrefresh(w);
  char ch;
  do
@@ -364,13 +502,13 @@ int query_int(const char *mes, ...)
  char buff[1024];
  vsprintf(buff, mes, ap);
  va_end(ap);
- int win_width = strlen(buff) + 10;
+ int win_width = utf8_width(buff) + 10;
 
  WINDOW *w = newwin(3, win_width, (TERMY-3)/2, 11+((TERMX > win_width) ? (TERMX-win_width)/2 : 0));
 
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- mvwprintz(w, 1, 1, c_ltred, "%s (0-9)", buff);
+ mvwprintz(w, 1, 1, c_ltred, _("%s (0-9)"), buff);
  wrefresh(w);
 
  int temp;
@@ -385,52 +523,200 @@ int query_int(const char *mes, ...)
  return temp-48;
 }
 
-std::string string_input_popup(std::string title, int max_length, std::string input)
-{
- std::string ret = input;
+std::string string_input_popup(std::string title, int width, std::string input, std::string desc, std::string identifier, int max_length ) {
+  nc_color title_color = c_ltred;
+  nc_color desc_color = c_green;
+  nc_color string_color = c_magenta;
+  nc_color cursor_color = h_ltgray;
+  nc_color underscore_color = c_ltgray;
+  bool _debug=false;
 
- int startx = title.size() + 2;
- WINDOW *w = newwin(3, 80, (TERMY-3)/2, ((TERMX > 80) ? (TERMX-80)/2 : 0));
- wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
-            LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- for (int i = startx + 1; i < 79; i++)
-  mvwputch(w, 1, i, c_ltgray, '_');
+  std::vector<std::string> descformatted;
 
- mvwprintz(w, 1, 1, c_ltred, "%s", title.c_str());
-
- if (input != "")
-  mvwprintz(w, 1, startx, c_magenta, "%s", input.c_str());
-
- int posx = startx + input.size();
- mvwputch(w, 1, posx, h_ltgray, '_');
- do {
-  wrefresh(w);
-  long ch = getch();
-  if (ch == 27) {	// Escape
-   werase(w);
-   wrefresh(w);
-   delwin(w);
-   refresh();
-   return "";
-  } else if (ch == '\n') {
-   werase(w);
-   wrefresh(w);
-   delwin(w);
-   refresh();
-   return ret;
-  } else if ((ch == KEY_BACKSPACE || ch == 127) && posx > startx) {
-// Move the cursor back and re-draw it
-   ret = ret.substr(0, ret.size() - 1);
-   mvwputch(w, 1, posx, c_ltgray, '_');
-   posx--;
-   mvwputch(w, 1, posx, h_ltgray, '_');
-  } else if(ret.size() < max_length || max_length == 0) {
-   ret += ch;
-   mvwputch(w, 1, posx, c_magenta, ch);
-   posx++;
-   mvwputch(w, 1, posx, h_ltgray, '_');
+  std::string ret = input;
+  int titlesize = utf8_width(title.c_str());
+  int startx = titlesize + 2;
+  WINDOW *dw;
+  if(_debug) dw = newwin(1, 80, 3, ((TERMX > 80) ? (TERMX-80)/2 : 0));
+  if ( max_length == 0 ) max_length = width;
+  int w_height=3;
+  int iPopupWidth = (width == 0) ? FULL_SCREEN_WIDTH : width + titlesize + 4;
+  if (iPopupWidth > FULL_SCREEN_WIDTH) {
+    iPopupWidth = FULL_SCREEN_WIDTH;
   }
- } while (true);
+  if ( desc.size() > 0 ) {
+    int twidth = utf8_width(desc.c_str());
+    if ( twidth > iPopupWidth-4 ) {
+      twidth=iPopupWidth-4;
+    }
+    descformatted = foldstring(desc, twidth);
+    w_height+=descformatted.size();
+  }
+  int starty=1+descformatted.size();
+
+  if ( max_length == 0 ) max_length = 1024;
+  int w_y=(TERMY-w_height)/2;
+  int w_x=((TERMX > iPopupWidth) ? (TERMX-iPopupWidth)/2 : 0);
+  WINDOW *w = newwin(w_height, iPopupWidth, w_y,
+    ((TERMX > iPopupWidth) ? (TERMX-iPopupWidth)/2 : 0));
+
+  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
+             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
+
+  int endx=iPopupWidth-3;
+
+  for(int i=0; i < descformatted.size(); i++ ) {
+    mvwprintz(w, 1+i, 1, desc_color, "%s", descformatted[i].c_str() );
+  }
+  mvwprintz(w, starty, 1, title_color, "%s", title.c_str() );
+
+  int pos = utf8_width(input.c_str());
+  int lastpos=pos;
+  int scrmax=endx-startx; 
+  int shift = 0;
+  int lastshift=shift;
+  bool redraw=true;
+  long ch=0;
+
+  do {
+    
+    if ( pos < 0 ) pos=0;
+
+    if ( pos < shift ) {
+      shift=pos;
+    } else if ( pos > shift+scrmax ) {
+      shift=pos-scrmax;
+    }
+
+    if (shift < 0 ) shift=0;
+
+    if(_debug) mvwprintz(dw, 0, startx, c_red, "ch %d [%c] %c%c start/endx: %d/%d pos=%d (%d) shift=%d (%d) scrmax=%d size=%d     ", ch, (pos < ret.size() ? ret[pos] : '!' ),
+      (lastpos!=pos?'p':' '),(lastshift!=shift?'s':' '),
+      startx,endx,pos,lastpos,shift,lastshift,scrmax,ret.size() );
+
+    if( redraw || lastshift != shift ) {  
+      redraw=false;
+      for ( int reti=shift, scri=0; scri <= scrmax; reti++,scri++ ) {
+        if( reti < ret.size() ) {
+          mvwputch(w, starty, startx+scri, (reti == pos ? cursor_color : string_color ), ret[reti] );
+        } else {
+          mvwputch(w, starty, startx+scri, (reti == pos ? cursor_color : underscore_color ), '_');  
+        }
+      }
+    } else if ( lastpos != pos ) {
+      if ( lastpos >= shift && lastpos <= shift+scrmax ) {
+        if ( lastpos-shift >= 0 && lastpos-shift < ret.size() ) {
+          mvwputch(w, starty, startx+lastpos, string_color, ret[lastpos-shift]);
+        } else {
+          mvwputch(w, starty, startx+lastpos, underscore_color, '_' );
+        }
+      }
+      if (pos < ret.size() ) {
+        mvwputch(w, starty, startx+pos, cursor_color, ret[pos-shift]);
+      } else {
+        mvwputch(w, starty, startx+pos, cursor_color, '_' );
+      }
+    }
+
+    lastpos=pos;
+    lastshift=shift;
+    wrefresh(w);
+    if (_debug) wrefresh(dw);
+    ch = getch();
+    if (ch == 27) {	// Escape
+      werase(w);
+      wrefresh(w);
+      delwin(w);
+      refresh();
+      return "";
+    } else if (ch == '\n') {
+      werase(w);
+      wrefresh(w);
+      delwin(w);
+      refresh();
+      if(identifier.size() > 0 && ret.size() > 0 ) {
+        std::vector<std::string> * hist=uistate.gethistory(identifier);
+        if( hist!=NULL ) {
+          if ( hist->size() == 0 || (*hist)[hist->size()-1] != ret ) {
+            hist->push_back(ret);
+          }
+        }
+      }
+      return ret;
+    } else if (ch == KEY_UP ) {
+      if(identifier.size() > 0) {
+        std::vector<std::string> * hist=uistate.gethistory(identifier);
+        if(hist!=NULL) {
+           uimenu hmenu;
+           hmenu.w_height=3+hist->size();
+           if (w_y-hmenu.w_height < 0 ) {
+             hmenu.w_y=0;
+             hmenu.w_height = ( w_y-hmenu.w_y < 4 ? 4 : w_y-hmenu.w_y );
+           } else {
+             hmenu.w_y = w_y - hmenu.w_height;
+           }
+           hmenu.w_x = w_x;
+           hmenu.title = _("d: delete history");
+           hmenu.return_invalid = true;
+           for(int h=0; h < hist->size(); h++) {
+             hmenu.addentry(h,true,-2,(*hist)[h].c_str());
+           }
+           if ( ret.size() > 0 && ( hmenu.entries.size() == 0 || hmenu.entries[hist->size()-1].txt != ret ) ) {
+             hmenu.addentry(hist->size(),true,-2,ret);
+             hmenu.selected = hist->size();
+           } else {
+             hmenu.selected = hist->size()-1;
+           }
+
+           hmenu.query();
+           if ( hmenu.ret >= 0 && hmenu.entries[hmenu.ret].txt != ret ) {
+             ret=hmenu.entries[hmenu.ret].txt;
+             if( hmenu.ret < hist->size() ) {
+               hist->erase(hist->begin()+hmenu.ret);
+               hist->push_back(ret);
+             }
+             pos=ret.size();
+             redraw=true;
+           } else if ( hmenu.keypress == 'd' ) {
+             hist->clear();
+           }
+        }
+      }
+    } else if (ch == KEY_RIGHT ) {
+      if( pos+1 <= ret.size() ) {
+        pos++;
+      }
+    } else if (ch == KEY_LEFT ) {
+      if ( pos > 0 ) {
+        pos--;
+      }
+    } else if (ch == 0x15 ) {                      // ctrl-u: delete all the things
+      pos = 0;
+      ret.erase(0);
+      redraw = true;
+    } else if (ch == KEY_BACKSPACE || ch == 127) { // Move the cursor back and re-draw it
+      if( pos > 0 && pos <= ret.size() ) {         // but silently drop input if we're at 0, instead of adding '^'
+        pos--;                                     //TODO: it is safe now since you only input ascii chars
+        ret.erase(pos,1);
+        redraw = true;
+      }
+    } else if(ch==KEY_F(2)) {
+      std::string tmp = get_input_string_from_file();
+      int tmplen = utf8_width(tmp.c_str());
+      if(tmplen>0 && (tmplen+utf8_width(ret.c_str())<=max_length||max_length==0)) {
+         ret.append(tmp);
+      }
+    } else if( ch!=0 && (ret.size() < max_length || max_length == 0) ) {
+      if ( pos == ret.size() ) {
+        ret += ch;
+      } else {
+        ret.insert(pos, 1, ch);
+      }
+      redraw = true;
+      pos++;
+    }
+  } while ( true );
+  return ret;
 }
 
 char popup_getkey(const char *mes, ...)
@@ -443,34 +729,24 @@ char popup_getkey(const char *mes, ...)
  std::string tmp = buff;
  int width = 0;
  int height = 2;
- size_t pos = tmp.find_first_of('\n');
- while (pos != std::string::npos) {
-  height++;
-  if (pos > width)
-   width = pos;
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+ std::vector<std::string> folded = foldstring(tmp, 99999);
+ height += folded.size();
+ for(int i=0; i<folded.size(); i++) {
+     int cw = utf8_width(folded[i].c_str());
+     if(cw>width) {
+         width = cw;
+     }
  }
- if (width == 0 || tmp.length() > width)
-  width = tmp.length();
  width += 2;
- if (height > 25)
-  height = 25;
+ if (height > FULL_SCREEN_HEIGHT)
+  height = FULL_SCREEN_HEIGHT;
  WINDOW *w = newwin(height+1, width, (TERMY-(height+1))/2, (TERMX > width) ? (TERMX-width)/2 : 0);
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- tmp = buff;
- pos = tmp.find_first_of('\n');
- int line_num = 0;
- while (pos != std::string::npos) {
-  std::string line = tmp.substr(0, pos);
-  line_num++;
-  mvwprintz(w, line_num, 1, c_white, line.c_str());
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+
+ for(int i=0; i<folded.size(); i++) {
+     mvwprintz(w, i+1, 1, c_white, folded[i].c_str());
  }
- line_num++;
- mvwprintz(w, line_num, 1, c_white, tmp.c_str());
 
  wrefresh(w);
  char ch = getch();;
@@ -481,110 +757,54 @@ char popup_getkey(const char *mes, ...)
  return ch;
 }
 
-int menu_vec(bool cancelable, const char *mes, std::vector<std::string> options)
-{
- if (options.size() == 0) {
-  debugmsg("0-length menu (\"%s\")", mes);
-  return -1;
- }
- std::string title = mes;
- int height = 3 + options.size(), width = title.length() + 2;
- for (int i = 0; i < options.size(); i++) {
-  if (options[i].length() + 6 > width)
-   width = options[i].length() + 6;
- }
- WINDOW *w = newwin(height, width, (TERMY-height)/2, (TERMX > width) ? (TERMX-width)/2 : 0);
- wattron(w, c_white);
- wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
-            LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- mvwprintw(w, 1, 1, title.c_str());
- for (int i = 0; i < options.size(); i++)
-  mvwprintw(w, i + 2, 1, "%c: %s", (i < 9? i + '1' :
-                                   (i == 9? '0' : 'a' + i - 10)),
-            options[i].c_str());
- long ch;
- wrefresh(w);
- int res;
- do
- {
-  ch = getch();
-  if (cancelable && ch == KEY_ESCAPE)
-   res = options.size();
-  else
-  if (ch >= '1' && ch <= '9')
-   res = ch - '1' + 1;
-  else
-  if (ch == '0')
-   res = 10;
-  else
-  if (ch >= 'a' && ch <= 'z')
-   res = ch - 'a' + 11;
-  else
-   res = -1;
-  if (res > options.size())
-   res = -1;
- }
- while (res == -1);
- werase(w);
- wrefresh(w);
- delwin(w);
- return (res);
+int menu_vec(bool cancelable, const char *mes, std::vector<std::string> options) { // compatibility stub for uimenu(cancelable, mes, options)
+  return (int)uimenu(cancelable, mes, options);
 }
 
-int menu(bool cancelable, const char *mes, ...)
-{
- va_list ap;
- va_start(ap, mes);
- char* tmp;
- std::vector<std::string> options;
- bool done = false;
- while (!done) {
-  tmp = va_arg(ap, char*);
-  if (tmp != NULL) {
-   std::string strtmp = tmp;
-   options.push_back(strtmp);
-  } else
-   done = true;
- }
- return (menu_vec(cancelable, mes, options));
+int menu(bool cancelable, const char *mes, ...) { // compatibility stub for uimenu(cancelable, mes, ...)
+  va_list ap;
+  va_start(ap, mes);
+  char* tmp;
+  std::vector<std::string> options;
+  bool done = false;
+  while (!done) {
+    tmp = va_arg(ap, char*);
+    if (tmp != NULL) {
+      std::string strtmp = tmp;
+      options.push_back(strtmp);
+    } else {
+      done = true;
+    }
+  }
+  return (uimenu(cancelable, mes, options));
 }
 
 void popup_top(const char *mes, ...)
 {
  va_list ap;
  va_start(ap, mes);
- char buff[1024];
+ char buff[4096];
  vsprintf(buff, mes, ap);
  va_end(ap);
  std::string tmp = buff;
  int width = 0;
  int height = 2;
- size_t pos = tmp.find_first_of('\n');
- while (pos != std::string::npos) {
-  height++;
-  if (pos > width)
-   width = pos;
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+ std::vector<std::string> folded = foldstring(tmp, 99999);
+ height += folded.size();
+ for(int i=0; i<folded.size(); i++) {
+     int cw = utf8_width(folded[i].c_str());
+     if(cw>width) {
+         width = cw;
+     }
  }
- if (width == 0 || tmp.length() > width)
-  width = tmp.length();
  width += 2;
- WINDOW *w = newwin(height+1, width, 0, (TERMX > width) ? (TERMX-width)/2 : 0);
+ WINDOW *w = newwin(height, width, 0, (TERMX > width) ? (TERMX-width)/2 : 0);
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- tmp = buff;
- pos = tmp.find_first_of('\n');
- int line_num = 0;
- while (pos != std::string::npos) {
-  std::string line = tmp.substr(0, pos);
-  line_num++;
-  mvwprintz(w, line_num, 1, c_white, line.c_str());
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+
+ for(int i=0; i<folded.size(); i++) {
+     mvwprintz(w, i+1, 1, c_white, folded[i].c_str());
  }
- line_num++;
- mvwprintz(w, line_num, 1, c_white, tmp.c_str());
 
  wrefresh(w);
  char ch;
@@ -601,40 +821,30 @@ void popup(const char *mes, ...)
 {
  va_list ap;
  va_start(ap, mes);
- char buff[8192];
+ char buff[4096];
  vsprintf(buff, mes, ap);
  va_end(ap);
  std::string tmp = buff;
  int width = 0;
  int height = 2;
- size_t pos = tmp.find_first_of('\n');
- while (pos != std::string::npos) {
-  height++;
-  if (pos > width)
-   width = pos;
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+ std::vector<std::string> folded = foldstring(tmp, 99999);
+ height += folded.size();
+ for(int i=0; i<folded.size(); i++) {
+     int cw = utf8_width(folded[i].c_str());
+     if(cw>width) {
+         width = cw;
+     }
  }
- if (width == 0 || tmp.length() > width)
-  width = tmp.length();
  width += 2;
- if (height > 25)
-  height = 25;
- WINDOW *w = newwin(height+1, width, (TERMY-(height+1))/2, (TERMX > width) ? (TERMX-width)/2 : 0);
+ if (height > FULL_SCREEN_HEIGHT)
+  height = FULL_SCREEN_HEIGHT;
+ WINDOW *w = newwin(height, width, (TERMY-(height+1))/2, (TERMX > width) ? (TERMX-width)/2 : 0);
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- tmp = buff;
- pos = tmp.find_first_of('\n');
- int line_num = 0;
- while (pos != std::string::npos) {
-  std::string line = tmp.substr(0, pos);
-  line_num++;
-  mvwprintz(w, line_num, 1, c_white, line.c_str());
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+
+ for(int i=0; i<folded.size(); i++) {
+     mvwprintz(w, i+1, 1, c_white, folded[i].c_str());
  }
- line_num++;
- mvwprintz(w, line_num, 1, c_white, tmp.c_str());
 
  wrefresh(w);
  char ch;
@@ -651,40 +861,29 @@ void popup_nowait(const char *mes, ...)
 {
  va_list ap;
  va_start(ap, mes);
- char buff[8192];
+ char buff[4096];
  vsprintf(buff, mes, ap);
  va_end(ap);
  std::string tmp = buff;
  int width = 0;
  int height = 2;
- size_t pos = tmp.find_first_of('\n');
- while (pos != std::string::npos) {
-  height++;
-  if (pos > width)
-   width = pos;
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+ std::vector<std::string> folded = foldstring(tmp, 99999);
+ height += folded.size();
+ for(int i=0; i<folded.size(); i++) {
+     int cw = utf8_width(folded[i].c_str());
+     if(cw>width) {
+         width = cw;
+     }
  }
- if (width == 0 || tmp.length() > width)
-  width = tmp.length();
  width += 2;
- if (height > 25)
-  height = 25;
- WINDOW *w = newwin(height+1, width, (TERMY-(height+1))/2, (TERMX > width) ? (TERMX-width)/2 : 0);
+ if (height > FULL_SCREEN_HEIGHT)
+  height = FULL_SCREEN_HEIGHT;
+ WINDOW *w = newwin(height, width, (TERMY-(height+1))/2, (TERMX > width) ? (TERMX-width)/2 : 0);
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- tmp = buff;
- pos = tmp.find_first_of('\n');
- int line_num = 0;
- while (pos != std::string::npos) {
-  std::string line = tmp.substr(0, pos);
-  line_num++;
-  mvwprintz(w, line_num, 1, c_white, line.c_str());
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+ for(int i=0; i<folded.size(); i++) {
+     mvwprintz(w, i+1, 1, c_white, folded[i].c_str());
  }
- line_num++;
- mvwprintz(w, line_num, 1, c_white, tmp.c_str());
  wrefresh(w);
  delwin(w);
  refresh();
@@ -698,21 +897,28 @@ void full_screen_popup(const char* mes, ...)
  vsprintf(buff, mes, ap);
  va_end(ap);
  std::string tmp = buff;
+ int width = 0;
+ int height = 2;
+ std::vector<std::string> folded = foldstring(tmp, FULL_SCREEN_WIDTH-3);
+ height += folded.size();
+ for(int i=0; i<folded.size(); i++) {
+     int cw = utf8_width(folded[i].c_str());
+     if(cw>width) {
+         width = cw;
+     }
+ }
+ width += 2;
 
- WINDOW *w = newwin(25, 80, (TERMY > 25) ? (TERMY-25)/2 : 0, (TERMX > 80) ? (TERMX-80)/2 : 0);
+ WINDOW *w = newwin(FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
+                    (TERMY > FULL_SCREEN_HEIGHT) ? (TERMY-FULL_SCREEN_HEIGHT)/2 : 0,
+                    (TERMX > FULL_SCREEN_WIDTH) ? (TERMX-FULL_SCREEN_WIDTH)/2 : 0);
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
- size_t pos = tmp.find_first_of('\n');
- int line_num = 0;
- while (pos != std::string::npos) {
-  std::string line = tmp.substr(0, pos);
-  line_num++;
-  mvwprintz(w, line_num, 1, c_white, line.c_str());
-  tmp = tmp.substr(pos + 1);
-  pos = tmp.find_first_of('\n');
+
+ for(int i=0; i<folded.size(); i++) {
+     mvwprintz(w, i+1, 2, c_white, folded[i].c_str());
  }
- line_num++;
- mvwprintz(w, line_num, 1, c_white, tmp.c_str());
+
  wrefresh(w);
  char ch;
  do
@@ -725,48 +931,53 @@ void full_screen_popup(const char* mes, ...)
 }
 
 //note that passing in iteminfo instances with sType == "MENU" or "DESCRIPTION" does special things
-//if sType == "MENU", sPre == "iOffsetY" or "iOffsetX" also do special things
-//otherwise if sType == "MENU", iValue can be used to control color
+//if sType == "MENU", sFmt == "iOffsetY" or "iOffsetX" also do special things
+//otherwise if sType == "MENU", dValue can be used to control color
 //all this should probably be cleaned up at some point, rather than using a function for things it wasn't meant for
-char compare_split_screen_popup(int iLeft, int iWidth, int iHeight, std::string sItemName, std::vector<iteminfo> vItemDisplay, std::vector<iteminfo> vItemCompare)
+// well frack, half the game uses it so: optional (int)selected argument causes entry highlight, and enter to return entry's key. Also it now returns int
+int compare_split_screen_popup(int iLeft, int iWidth, int iHeight, std::string sItemName, std::vector<iteminfo> vItemDisplay, std::vector<iteminfo> vItemCompare, int selected)
 {
  WINDOW* w = newwin(iHeight, iWidth, VIEW_OFFSET_Y, iLeft + VIEW_OFFSET_X);
 
  mvwprintz(w, 1, 2, c_white, sItemName.c_str());
  int line_num = 3;
  int iStartX = 0;
- std::string sPlus;
  bool bStartNewLine = true;
+ int selected_ret='\n';
+ std::string spaces(iWidth-2, ' ');
  for (int i = 0; i < vItemDisplay.size(); i++) {
   if (vItemDisplay[i].sType == "MENU") {
-   if (vItemDisplay[i].sPre == "iOffsetY") {
-    line_num += vItemDisplay[i].iValue;
-   } else if (vItemDisplay[i].sPre == "iOffsetX") {
-    iStartX = vItemDisplay[i].iValue;
+   if (vItemDisplay[i].sFmt == "iOffsetY") {
+    line_num += int(vItemDisplay[i].dValue);
+   } else if (vItemDisplay[i].sFmt == "iOffsetX") {
+    iStartX = int(vItemDisplay[i].dValue);
    } else {
     nc_color nameColor = c_ltgreen; //pre-existing behavior, so make it the default
     //patched to allow variable "name" coloring, e.g. for item examining
-    if (vItemDisplay[i].iValue >= 0) {
-     nameColor = vItemDisplay[i].iValue == 0 ? c_ltgray : c_ltred;
+    nc_color bgColor = c_white;     //yes the name makes no sense
+    if (vItemDisplay[i].dValue >= 0) {
+        if (vItemDisplay[i].dValue < .1 && vItemDisplay[i].dValue > -.1){
+            nameColor = c_ltgray;
+        } else {
+            nameColor = c_ltred;
+        }
     }
-    mvwprintz(w, line_num, iStartX, nameColor, "%s", (vItemDisplay[i].sName).c_str());
-    wprintz(w, c_white, "%s", (vItemDisplay[i].sPre).c_str());
+    if ( i == selected && vItemDisplay[i].sName != "" ) {
+      bgColor = h_white;
+      selected_ret=(int)vItemDisplay[i].sName.c_str()[0]; // fixme: sanity check(?)
+    }
+    mvwprintz(w, line_num, 1, bgColor, "%s", spaces.c_str() );
+    shortcut_print(w, line_num, iStartX, bgColor, nameColor, vItemDisplay[i].sFmt.c_str());
     line_num++;
    }
   } else if (vItemDisplay[i].sType == "DESCRIPTION") {
-   std::string sText = vItemDisplay[i].sName;
-   std::replace(sText.begin(), sText.end(), '\n', ' ');
-   while (1) {
-     line_num++;
-     if (sText.size() > iWidth-4) {
-      int iPos = sText.find_last_of(' ', iWidth-4);
-      mvwprintz(w, line_num, 2, c_white, (sText.substr(0, iPos)).c_str());
-      sText = sText.substr(iPos+1, sText.size());
-     } else {
-      mvwprintz(w, line_num, 2, c_white, (sText).c_str());
-      break;
-     }
-   }
+    std::string sText = word_rewrap(vItemDisplay[i].sName, iWidth-4);
+	std::stringstream ss(sText);
+	std::string l;
+    while (std::getline(ss, l, '\n')) {
+      line_num++;
+	  mvwprintz(w, line_num, 2, c_white, l.c_str());
+    }
   } else {
    if (bStartNewLine) {
     mvwprintz(w, line_num, 2, c_white, "%s", (vItemDisplay[i].sName).c_str());
@@ -775,30 +986,38 @@ char compare_split_screen_popup(int iLeft, int iWidth, int iHeight, std::string 
     wprintz(w, c_white, "%s", (vItemDisplay[i].sName).c_str());
    }
 
-   sPlus = "";
-   std::string sPre = vItemDisplay[i].sPre;
-   if (sPre.size() > 1 && sPre.substr(sPre.size()-1, 1) == "+") {
-     wprintz(w, c_white, "%s", (sPre.substr(0, sPre.size()-1)).c_str());
-     sPlus = "+";
-   } else if (sPre != "+")
-     wprintz(w, c_white, "%s", sPre.c_str());
-   else if (sPre == "+")
-    sPlus = "+";
+   std::string sPlus = vItemDisplay[i].sPlus;
+   std::string sFmt = vItemDisplay[i].sFmt;
+   std::string sNum = " ";
+   std::string sPost = "";
 
-   if (vItemDisplay[i].iValue != -999) {
+    //A bit tricky, find %d and split the string
+   size_t pos = sFmt.find("<num>");
+   if(pos != std::string::npos)
+   {
+        wprintz(w, c_white, sFmt.substr(0, pos).c_str());
+        sPost = sFmt.substr(pos+5);
+   }
+   else
+   {
+        wprintz(w, c_white, sFmt.c_str());
+   }
+
+   if (vItemDisplay[i].sValue != "-999") {
     nc_color thisColor = c_white;
     for (int k = 0; k < vItemCompare.size(); k++) {
-     if (vItemCompare[k].iValue != -999) {
+     if (vItemCompare[k].sValue != "-999") {
       if (vItemDisplay[i].sName == vItemCompare[k].sName) {
-       if (vItemDisplay[i].iValue == vItemCompare[k].iValue) {
+       if (vItemDisplay[i].dValue > vItemCompare[k].dValue - .1 &&
+           vItemDisplay[i].dValue < vItemCompare[k].dValue + .1) {
          thisColor = c_white;
-       } else if (vItemDisplay[i].iValue > vItemCompare[k].iValue) {
+       } else if (vItemDisplay[i].dValue > vItemCompare[k].dValue) {
         if (vItemDisplay[i].bLowerIsBetter) {
          thisColor = c_ltred;
         } else {
          thisColor = c_ltgreen;
         }
-       } else if (vItemDisplay[i].iValue < vItemCompare[k].iValue) {
+       } else if (vItemDisplay[i].dValue < vItemCompare[k].dValue) {
         if (vItemDisplay[i].bLowerIsBetter) {
          thisColor = c_ltgreen;
         } else {
@@ -809,12 +1028,13 @@ char compare_split_screen_popup(int iLeft, int iWidth, int iHeight, std::string 
       }
      }
     }
-
-    if (sPlus == "+" )
-     wprintz(w, thisColor, "%s", (sPlus).c_str());
-    wprintz(w, thisColor, "%d", vItemDisplay[i].iValue);
+    if (vItemDisplay[i].is_int == true) {
+        wprintz(w, thisColor, "%s%.0f", sPlus.c_str(), vItemDisplay[i].dValue);
+    } else {
+        wprintz(w, thisColor, "%s%.1f", sPlus.c_str(), vItemDisplay[i].dValue);
+    }
    }
-   wprintz(w, c_white, (vItemDisplay[i].sPost).c_str());
+    wprintz(w, c_white, sPost.c_str());
 
    if (vItemDisplay[i].bNewLine) {
     line_num++;
@@ -826,15 +1046,20 @@ char compare_split_screen_popup(int iLeft, int iWidth, int iHeight, std::string 
  wborder(w, LINE_XOXO, LINE_XOXO, LINE_OXOX, LINE_OXOX,
             LINE_OXXO, LINE_OOXX, LINE_XXOO, LINE_XOOX );
 
- char ch = ' ';
+ int ch = (int)' ';
 
  wrefresh(w);
  if (iLeft > 0) {
-  ch = getch();
-  werase(w);
-  wrefresh(w);
+  ch = (int)getch();
+  if ( selected > 0 && ( ch == '\n' || ch == KEY_RIGHT ) && selected_ret != 0 ) {
+    ch=selected_ret;
+  } else if ( selected == KEY_LEFT ) {
+    ch=(int)' ';
+  }
+  //werase(w);
+  //wrefresh(w);
   delwin(w);
-  refresh();
+  //refresh();
  }
 
  return ch;
@@ -874,45 +1099,54 @@ long special_symbol (long sym)
     }
 }
 
-// crawl through string, probing each word while treating spaces & newlines the same.
-std::string word_rewrap (const std::string &in, int width){
+// utf-8 version
+std::string word_rewrap (const std::string &ins, int width){
     std::ostringstream o;
-    int i_ok = 0; // pos in string of next char probe
-    int x_ok = 0; // ditto for column pos
-    while (i_ok <= in.size()){
-        bool fit = false;
-        int j=0; // j = word probe counter.
-        while(x_ok + j <= width){
-           if (i_ok + j >= in.size()){
-              fit = true;
-              break;
-           }
-           char c = in[i_ok+j];
-           if (c == '\n' || c == ' '){ //whitespace detected. copy word.
-              fit = true;
-              break;
-           }
-           j++;
-        }
-        if(fit == false){
-           o << '\n';
-           x_ok = 0;
-        }
-        else {
-           o << ' ';
-           for (int k=i_ok; k < i_ok+j; k++){
-              o << in[k];
-           }
-           i_ok += j+1;
-           x_ok += j+1;
-        }
-    }
+	std::string in = ins;
+	std::replace(in.begin(), in.end(), '\n', ' ');
+	int lastwb = 0; //last word break
+	int lastout = 0;
+	int x=0;
+	int j=0;
+	const char *instr = in.c_str();
+
+	while(j<in.size())
+	{
+		const char* ins = instr+j;
+		int len = ANY_LENGTH;
+		unsigned uc = UTF8_getch(&ins, &len);
+		int cw = mk_wcwidth((wchar_t)uc);
+		len = ANY_LENGTH-len;
+
+		j+=len;
+		x+=cw;
+
+		if(x>width)
+		{
+			for(int k=lastout; k<lastwb; k++)
+				o << in[k];
+			o<<'\n';
+			x=0;
+			lastout=j=lastwb;
+		}
+		else if(uc==' '|| uc=='\n')
+		{
+			lastwb=j;
+		}
+		else if(uc>=0x2E80)
+		{
+			lastwb=j;
+		}
+	}
+	for(int k=lastout; k<in.size(); k++)
+		o << in[k];
+
     return o.str();
 }
 
 void draw_tab(WINDOW *w, int iOffsetX, std::string sText, bool bSelected)
 {
- int iOffsetXRight = iOffsetX + sText.size() + 1;
+ int iOffsetXRight = iOffsetX + utf8_width(sText.c_str()) + 1;
 
  mvwputch(w, 0, iOffsetX,      c_ltgray, LINE_OXXO); // |^
  mvwputch(w, 0, iOffsetXRight, c_ltgray, LINE_OOXX); // ^|
@@ -957,9 +1191,120 @@ void hit_animation(int iX, int iY, nc_color cColor, char cTile, int iTimeout)
     timeout(iTimeout);
     getch(); //useing this, because holding down a key with nanosleep can get yourself killed
     timeout(-1);
+}
 
-    /*timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = iTimeout * 1000 * 1000; //100ms
-    nanosleep(&ts, NULL);*/
+std::string from_sentence_case (const std::string &kingston)
+{
+    if (kingston.size()>0) {
+        std::string montreal = kingston;
+        if(montreal.empty()) {
+            return "";
+        } else {
+            montreal.replace(0,1,1,tolower(kingston.at(0)));
+            return montreal;
+        }
+    }
+    return "";
+}
+
+std::string string_format(std::string pattern, ...)
+{
+    va_list ap;
+    va_start(ap,pattern);
+    char buff[3000];    //TODO replace Magic Number
+    vsprintf(buff, pattern.c_str(), ap);
+    va_end(ap);
+    
+    //drop contents behind $, this trick is there to skip certain arguments
+    char* break_pos = strchr(buff, '\003');
+    if(break_pos) break_pos[0] = '\0';
+
+    return buff;
+}
+
+//wrap if for i18n 
+std::string& capitalize_letter(std::string &str, size_t n)
+{
+    char c= str[n];
+    if(str.length()>0 && c>='a' && c<='z')
+    {
+       c += 'A'-'a';
+       str[n] = c;
+    }
+
+    return str;
+}
+
+//remove prefix of a strng, between c1 and c2, ie, "<prefix>remove it"
+std::string rm_prefix(std::string str, char c1, char c2) {
+    if(str.size()>0 && str[0]==c1) {
+        size_t pos = str.find_first_of(c2);
+        if(pos!=std::string::npos) {
+            str = str.substr(pos+1);
+        }
+    }
+    return str;
+}
+
+// draw a menu item like strign with highlighted shortcut character
+// Example: <w>ield, m<o>ve
+// returns: output length (in console cells)
+size_t shortcut_print(WINDOW* w, int y, int x, nc_color color, nc_color colork, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap,fmt);
+    char buff[3000];    //TODO replace Magic Number
+    vsprintf(buff, fmt, ap);
+    va_end(ap);
+    
+    std::string tmp = buff;
+    size_t pos = tmp.find_first_of('<');
+    size_t pos2 = tmp.find_first_of('>');
+    size_t len = 0;
+    if(pos2!=std::string::npos && pos<pos2)
+    {
+        tmp.erase(pos,1);
+        tmp.erase(pos2-1,1);
+        mvwprintz(w, y, x, color, tmp.c_str());
+        mvwprintz(w, y, x+pos, colork, "%s", tmp.substr(pos, pos2-pos-1).c_str());
+        len = utf8_width(tmp.c_str());
+    }
+    else
+    {
+        // no shutcut? 
+        mvwprintz(w, y, x, color, buff);
+        len = utf8_width(buff);
+    }
+    return len;
+}
+
+//same as above, from current position
+size_t shortcut_print(WINDOW* w, nc_color color, nc_color colork, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap,fmt);
+    char buff[3000];    //TODO replace Magic Number
+    vsprintf(buff, fmt, ap);
+    va_end(ap);
+
+    std::string tmp = buff;
+    size_t pos = tmp.find_first_of('<');
+    size_t pos2 = tmp.find_first_of('>');
+    size_t len = 0;
+    if(pos2!=std::string::npos && pos<pos2)
+    {
+        tmp.erase(pos,1);
+        tmp.erase(pos2-1,1);
+        wprintz(w, color, tmp.substr(0, pos).c_str());
+        wprintz(w, colork, "%s", tmp.substr(pos, pos2-pos-1).c_str());
+        wprintz(w, color, tmp.substr(pos2-1).c_str());
+        len = utf8_width(tmp.c_str());
+    }
+    else
+    {
+        // no shutcut?
+        wprintz(w, color, buff);
+        len = utf8_width(buff);
+    }
+    return len;
 }

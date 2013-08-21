@@ -6,8 +6,8 @@ appear to guide you through the basic game actions.  Pressing spacebar will\n\
 close the pop-up.",
 "\
 The '@' character in the center of the screen represents you.  To move, you\n\
-can use the numpad, the vikeys (hjklyubn), or the arrow keys.  To pause,\n\
-press .",
+can use the numpad, the vikeys (hjklyubn), or the arrow keys.  To have your\n\
+character wait in place, press '.'",
 "\
 To see what the symbols around you mean, press ';'.  You'll be able to scroll\n\
 around and get information on the terrain, monsters, and items in the world\n\
@@ -37,7 +37,7 @@ items without moving to the square.",
 "\
 The Examine command is useful for grabbing items off window frames, around\n\
 corners, etc.  It's also used for interacting with a few terrain types.\n\
-Interactive terrain is always designated with a '6' symbol.",
+Interactive terrain is usually designated with a '6' symbol.",
 "\
 You don't have space in your inventory to store the item you just tried to\n\
 pick up.  You need to wear something with storage space, like a backpace or\n\
@@ -70,22 +70,23 @@ Comestibles are items you can use up, like food, drink, pills, etc.  Most\n\
 food expires eventually, so be careful.  Some comestibles, especially drugs,\n\
 can cause subtle, long-term effects.",
 "\
-The item you just picked up is a tool!  To activate a tool, press 'a'.  Most\n\
+The item you just picked up is a tool!  To activate a tool, press 'a'.  Some\n\
 tools have a set charge, which can be reloaded once depleted.  Other are\n\
-single-use items.",
+single-use items, and still others are reusable.",
 "\
 The item you just picked up is a firearm!  Guns are very powerful weapons but\n\
 they require ammunition.  Firearms have many special attributes.  Most\n\
-modify the damage done by their ammunition.  They also have an accuracy,\n\
+modify the damage done by their ammunition.  They also have dispersion, which\n\
 affects their chance to hit.  Some guns are semi-automatic, while others can\n\
-fire a burst.",
+fire a burst. Some firearms (mainly bows and other muscle-powered weapons)\n\
+have a range, which is added on top of the ammo's range when firing.",
 "\
 The item you just picked up is ammunition, used with a gun.  It has many\n\
 special attributes.  The damage value is the maximum done on a standard hit;\n\
 a critical hit or headshot will do much more damage.  Some monsters or NPCs\n\
 will wear armor which reduces the damage from gunfire; a high Armor-pierce\n\
 value will reduce this effect.  The Range is the maximum range the ammo can\n\
-achieve, and the accuracy affects its chance to hit.",
+achieve, and the dispersion affects its chance to hit.",
 "\
 You just put on an article of clothing that provides physical protection.\n\
 There are two types of damage that clothing defends against, bashing, and\n\

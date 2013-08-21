@@ -2,6 +2,7 @@
 #include "game.h"
 #include "output.h"
 #include "debug.h"
+#include "translations.h"
 #include <fstream>
 
 #define dbg(x) dout((DebugLevel)(x),D_MAP) << __FILE__ << ":" << __LINE__ << ": "
@@ -94,7 +95,7 @@ void mapbuffer::save()
 
  for (it = submaps.begin(); it != submaps.end(); it++) {
   if (num_saved_submaps % 100 == 0)
-   popup_nowait("Please wait as the map saves [%d/%d]",
+   popup_nowait(_("Please wait as the map saves [%d/%d]"),
                 num_saved_submaps, num_total_submaps);
 
   fout << it->first.x << " " << it->first.y << " " << it->first.z << std::endl;
@@ -113,6 +114,14 @@ void mapbuffer::save()
   }
   fout << std::endl;
 
+ // Furniture
+  for (int j = 0; j < SEEY; j++) {
+   for (int i = 0; i < SEEX; i++) {
+    if (sm->frn[i][j] != f_null)
+     fout << "f " << i << " " << j << " " << sm->frn[i][j] <<
+     std::endl;
+   }
+  }
  // Items section; designate it with an I.  Then check itm[][] for each square
  //   in the grid and print the coords and the item's details.
  // Designate it with a C if it's contained in the prior item.
@@ -140,13 +149,17 @@ void mapbuffer::save()
   }
 
  // Output the fields
-  field tmpf;
   for (int j = 0; j < SEEY; j++) {
    for (int i = 0; i < SEEX; i++) {
-    tmpf = sm->fld[i][j];
-    if (tmpf.type != fd_null)
-     fout << "F " << i << " " << j << " " << int(tmpf.type) << " " <<
-             int(tmpf.density) << " " << tmpf.age << std::endl;
+    if (sm->fld[i][j].fieldCount() > 0){
+     for(std::map<field_id, field_entry*>::iterator it = sm->fld[i][j].getFieldStart();
+         it != sm->fld[i][j].getFieldEnd(); ++it){
+      if(it->second != NULL){
+       fout << "F " << i << " " << j << " " << int(it->second->getFieldType()) << " " <<
+        int(it->second->getFieldDensity()) << " " << (it->second->getFieldAge()) << std::endl;
+      }
+     }
+    }
    }
   }
  // Output the spawn points
@@ -205,11 +218,14 @@ void mapbuffer::load()
 
  while (!fin.eof()) {
   if (num_loaded % 100 == 0)
-   popup_nowait("Please wait as the map loads [%d/%d]",
+   popup_nowait(_("Please wait as the map loads [%d/%d]"),
                 num_loaded, num_submaps);
   int locx, locy, locz, turn;
-  submap* sm = new submap;
+  submap* sm = new submap();
   fin >> locx >> locy >> locz >> turn;
+  if(fin.eof()) {
+      break;
+  }
   sm->turn_last_touched = turn;
   int turndif = (master_game ? int(master_game->turn) - turn : 0);
   if (turndif < 0)
@@ -220,9 +236,10 @@ void mapbuffer::load()
     int tmpter;
     fin >> tmpter;
     sm->ter[i][j] = ter_id(tmpter);
+    sm->frn[i][j] = f_null;
     sm->itm[i][j].clear();
     sm->trp[i][j] = tr_null;
-    sm->fld[i][j] = field();
+    //sm->fld[i][j] = field(); //not needed now
     sm->graf[i][j] = graffiti();
    }
   }
@@ -261,10 +278,14 @@ void mapbuffer::load()
    } else if (string_identifier == "T") {
     fin >> itx >> ity >> t;
     sm->trp[itx][ity] = trap_id(t);
+   } else if (string_identifier == "f") {
+    fin >> itx >> ity >> t;
+    sm->frn[itx][ity] = furn_id(t);
    } else if (string_identifier == "F") {
     fin >> itx >> ity >> t >> d >> a;
-    sm->fld[itx][ity] = field(field_id(t), d, a);
-    sm->field_count++;
+	if(!sm->fld[itx][ity].findField(field_id(t)))
+		sm->field_count++;
+    sm->fld[itx][ity].addField(field_id(t), d, a);
    } else if (string_identifier == "S") {
     char tmpfriend;
     int tmpfac = -1, tmpmis = -1;

@@ -1,9 +1,13 @@
 #include "game.h"
-#include "input.h"
 #include "keypress.h"
 #include "debug.h"
+#include "input.h"
 #include "mapbuffer.h"
 #include "cursesdef.h"
+#include "overmapbuffer.h"
+#include "translations.h"
+#include "catacharset.h"
+#include "get_version.h"
 
 #include <sys/stat.h>
 #ifdef _MSC_VER
@@ -15,8 +19,6 @@
 
 #define dbg(x) dout((DebugLevel)(x),D_GAME) << __FILE__ << ":" << __LINE__ << ": "
 
-const char* getVersionString();
-
 void game::print_menu(WINDOW* w_open, int iSel, const int iMenuOffsetX, int iMenuOffsetY, bool bShowDDA)
 {
     //Clear Lines
@@ -25,7 +27,7 @@ void game::print_menu(WINDOW* w_open, int iSel, const int iMenuOffsetX, int iMen
     for (int i = 1; i < 79; i++)
         mvwputch(w_open, 23, i, c_white, LINE_OXOX);
 
-    mvwprintz(w_open, 24, 5, c_red, "Please report bugs to TheDarklingWolf@gmail.com or post on the forums.");
+    mvwprintz(w_open, 24, 5, c_red, _("Please report bugs to kevin.granade@gmail.com or post on the forums."));
 
     int iLine = 0;
     const int iOffsetX1 = 3;
@@ -63,15 +65,15 @@ void game::print_menu(WINDOW* w_open, int iSel, const int iMenuOffsetX, int iMen
     }
 
     std::vector<std::string> vMenuItems;
-    vMenuItems.push_back("MOTD");
-    vMenuItems.push_back("New Game");
-    vMenuItems.push_back("Load");
-    vMenuItems.push_back("Reset");
-    vMenuItems.push_back("Special");
-    vMenuItems.push_back("Options");
-    vMenuItems.push_back("Help");
-    vMenuItems.push_back("Credits");
-    vMenuItems.push_back("Quit");
+    vMenuItems.push_back(_("<M>OTD"));
+    vMenuItems.push_back(_("<N>ew Game"));
+    vMenuItems.push_back(_("<L>oad"));
+    vMenuItems.push_back(_("<R>eset"));
+    vMenuItems.push_back(_("<S>pecial"));
+    vMenuItems.push_back(_("<O>ptions"));
+    vMenuItems.push_back(_("<H>elp"));
+    vMenuItems.push_back(_("<C>redits"));
+    vMenuItems.push_back(_("<Q>uit"));
 
     print_menu_items(w_open, vMenuItems, iSel, iMenuOffsetY, iMenuOffsetX);
 
@@ -87,10 +89,9 @@ void game::print_menu_items(WINDOW* w_in, std::vector<std::string> vItems, int i
     for (int i=0; i < vItems.size(); i++) {
         wprintz(w_in, c_ltgray, "[");
         if (iSel == i) {
-            wprintz(w_in, h_white, vItems[i].c_str());
+            shortcut_print(w_in, h_white, h_white, vItems[i].c_str());
         } else {
-            wprintz(w_in, c_white, (vItems[i].substr(0, 1)).c_str());
-            wprintz(w_in, c_ltgray, (vItems[i].substr(1)).c_str());
+            shortcut_print(w_in, c_ltgray, c_white, vItems[i].c_str());
         }
         wprintz(w_in, c_ltgray, "] ");
     }
@@ -103,14 +104,17 @@ bool game::opening_screen()
     werase(w_background);
     wrefresh(w_background);
 
-    WINDOW* w_open = newwin(25, 80, (TERMY > 25) ? (TERMY-25)/2 : 0, (TERMX > 80) ? (TERMX-80)/2 : 0);
+    WINDOW* w_open = newwin(FULL_SCREEN_HEIGHT, FULL_SCREEN_WIDTH,
+                            (TERMY > FULL_SCREEN_HEIGHT) ? (TERMY-FULL_SCREEN_HEIGHT)/2 : 0,
+                            (TERMX > FULL_SCREEN_WIDTH) ? (TERMX-FULL_SCREEN_WIDTH)/2 : 0);
     const int iMenuOffsetX = 2;
-    int iMenuOffsetY = 22;
+    int iMenuOffsetY = FULL_SCREEN_HEIGHT-3;
 
     std::vector<std::string> vSubItems;
-    vSubItems.push_back("Custom Character");
-    vSubItems.push_back("Preset Character");
-    vSubItems.push_back("Random Character");
+    vSubItems.push_back(_("<C>ustom Character"));
+    vSubItems.push_back(_("<P>reset Character"));
+    vSubItems.push_back(_("<R>andom Character"));
+    vSubItems.push_back(_("Play <N>ow!"));
 
     print_menu(w_open, 0, iMenuOffsetX, iMenuOffsetY);
 
@@ -154,7 +158,7 @@ bool game::opening_screen()
     std::ifstream motd_file;
     motd_file.open("data/motd");
     if (!motd_file.is_open())
-        motd.push_back("No message today.");
+        motd.push_back(_("No message today."));
     else {
         while (!motd_file.eof()) {
             std::string tmp;
@@ -169,7 +173,7 @@ bool game::opening_screen()
     std::ifstream credits_file;
     credits_file.open("data/credits");
     if (!credits_file.is_open())
-        credits.push_back("No message today.");
+        credits.push_back(_("No message today."));
     else {
         while (!credits_file.eof()) {
             std::string tmp;
@@ -217,7 +221,7 @@ bool game::opening_screen()
             } else if (chInput == 'o' || chInput == 'O') {
                 sel1 = 5;
                 chInput = '\n';
-            } else if (chInput == 'H') {
+            } else if (chInput == 'H' || chInput == '?') {
                 sel1 = 6;
                 chInput = '\n';
             } else if (chInput == 'c' || chInput == 'C') {
@@ -254,7 +258,7 @@ bool game::opening_screen()
             }
         } else if (layer == 2) {
             if (sel1 == 1) {	// New Character
-                print_menu_items(w_open, vSubItems, sel2, iMenuOffsetY-2, iMenuOffsetX+7);
+                print_menu_items(w_open, vSubItems, sel2, iMenuOffsetY-2, iMenuOffsetX);
                 wrefresh(w_open);
                 refresh();
                 chInput = getch();
@@ -268,25 +272,26 @@ bool game::opening_screen()
                 } else if (chInput == 'r' || chInput == 'R') {
                     sel2 = 2;
                     chInput = '\n';
+                } else if (chInput == 'n' || chInput == 'N') {
+                    sel2 = 3;
+                    chInput = '\n';
                 }
 
                 if (chInput == KEY_LEFT || chInput == 'h') {
-                    if (sel2 > 0)
-                        sel2--;
-                    else
-                        sel2 = 2;
+                    sel2--;
+                    if (sel2 < 0)
+                        sel2 = vSubItems.size()-1;
                 } if (chInput == KEY_RIGHT || chInput == 'l') {
-                    if (sel2 < 2)
-                        sel2++;
-                    else
+                    sel2++;
+                    if (sel2 >= vSubItems.size())
                         sel2 = 0;
                 } else if (chInput == KEY_DOWN || chInput == 'j' || chInput == KEY_ESCAPE) {
                     layer = 1;
                     sel1 = 1;
                 }
                 if (chInput == KEY_UP || chInput == 'k' || chInput == '\n') {
-                    if (sel2 == 0 || sel2 == 2) {
-                        if (!u.create(this, (sel2 == 0) ? PLTYPE_CUSTOM : PLTYPE_RANDOM)) {
+                    if (sel2 == 0 || sel2 == 2 || sel2 == 3) {
+                        if (!u.create(this, (sel2 == 0) ? PLTYPE_CUSTOM : ((sel2 == 2)?PLTYPE_RANDOM : PLTYPE_NOW))) {
                             u = player();
                             delwin(w_open);
                             return (opening_screen());
@@ -299,16 +304,15 @@ bool game::opening_screen()
                     } else if (sel2 == 1) {
                         layer = 3;
                         sel1 = 0;
-                        print_menu_items(w_open, vSubItems, sel2, iMenuOffsetY-2, iMenuOffsetX+7);
                     }
                 }
             } else if (sel1 == 2) {	// Load Character
                 if (savegames.size() == 0)
-                    mvwprintz(w_open, iMenuOffsetY - 2, 19 + iMenuOffsetX, c_red, "No save games found!");
+                    mvwprintz(w_open, iMenuOffsetY - 2, 19 + iMenuOffsetX, c_red, _("No save games found!"));
                 else {
                     for (int i = 0; i < savegames.size(); i++) {
                         int line = iMenuOffsetY - 2 - i;
-                        mvwprintz(w_open, line, 19 + iMenuOffsetX, (sel2 == i ? h_white : c_white), savegames[i].c_str());
+                        mvwprintz(w_open, line, 19 + iMenuOffsetX, (sel2 == i ? h_white : c_white), base64_decode(savegames[i]).c_str());
                     }
                 }
                 wrefresh(w_open);
@@ -338,11 +342,12 @@ bool game::opening_screen()
                     }
                 }
             } else if (sel1 == 3) {  // Delete world
-                if (query_yn("Delete the world and all saves?")) {
+                if (query_yn(_("Delete the world and all saves?"))) {
                     delete_save();
                     savegames.clear();
                     MAPBUFFER.reset();
                     MAPBUFFER.make_volatile();
+                    overmap_buffer.clear();
                 }
 
                 layer = 1;
@@ -384,11 +389,11 @@ bool game::opening_screen()
             }
         } else if (layer == 3) {	// Character Templates
             if (templates.size() == 0)
-                mvwprintz(w_open, iMenuOffsetY-4, iMenuOffsetX+27, c_red, "No templates found!");
+                mvwprintz(w_open, iMenuOffsetY-4, iMenuOffsetX+20, c_red, _("No templates found!"));
             else {
                 for (int i = 0; i < templates.size(); i++) {
                     int line = iMenuOffsetY - 4 - i;
-                    mvwprintz(w_open, line, 27 + iMenuOffsetX, (sel1 == i ? h_white : c_white), templates[i].c_str());
+                    mvwprintz(w_open, line, 20 + iMenuOffsetX, (sel1 == i ? h_white : c_white), templates[i].c_str());
                 }
             }
             wrefresh(w_open);

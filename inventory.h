@@ -36,7 +36,7 @@ class inventory
   inventory  operator+  (const inventory &rhs);
   inventory  operator+  (const item &rhs);
   inventory  operator+  (const std::list<item> &rhs);
-  
+
   inventory filter_by_category(item_cat cat, const player& u) const;
 
   void unsort(); // flags the inventory as unsorted
@@ -44,6 +44,7 @@ class inventory
   void clear();
   void add_stack(std::list<item> newits);
   void push_back(std::list<item> newits);
+  char get_invlet_for_item( std::string item_type );
   item& add_item (item newit, bool keep_invlet = false); //returns a ref to the added item
   void add_item_by_type(itype_id type, int count = 1, int charges = -1);
   void add_item_keep_invlet(item newit);
@@ -70,17 +71,19 @@ class inventory
 
   std::vector<item*> all_items_by_type(itype_id type);
   std::vector<item*> all_ammo(ammotype type);
+  std::vector<item*> all_items_with_flag( const std::string flag );
 
 // Below, "amount" refers to quantity
 //        "charges" refers to charges
   int  amount_of (itype_id it) const;
   int  charges_of(itype_id it) const;
 
-  void use_amount (itype_id it, int quantity, bool use_container = false);
-  void use_charges(itype_id it, int quantity);
+  std::list<item> use_amount (itype_id it, int quantity, bool use_container = false);
+  std::list<item> use_charges(itype_id it, int quantity);
 
   bool has_amount (itype_id it, int quantity) const;
   bool has_charges(itype_id it, int quantity) const;
+  bool has_flag(std::string flag) const; //Inventory item has flag
   bool has_item(item *it) const; // Looks for a specific item
   bool has_gun_for_ammo(ammotype type) const;
   bool has_active_item(itype_id) const;
@@ -95,7 +98,7 @@ class inventory
   int worst_item_value(npc* p) const;
   bool has_enough_painkiller(int pain) const;
   item& most_appropriate_painkiller(int pain);
-  item& best_for_melee(int skills[num_skill_types]);
+  item& best_for_melee(player *p);
   item& most_loaded_gun();
 
   void rust_iron_items();
@@ -104,10 +107,12 @@ class inventory
   int volume() const;
   int max_active_item_charges(itype_id id) const;
 
-  void dump(std::vector<item>& dest) const; // dumps contents into dest (does not delete contents)
+  void dump(std::vector<item*>& dest); // dumps contents into dest (does not delete contents)
 
   // vector rather than list because it's NOT an item stack
   std::vector<item*> active_items();
+
+  void load_invlet_cache( std::ifstream &fin );
 
   // hack to account for players saving inventory data (including weapon, etc.)
   std::string save_str_no_quant() const;
@@ -119,9 +124,14 @@ class inventory
 
   item nullitem;
   std::list<item> nullstack;
+
  private:
+  // For each item ID, store a set of "favorite" inventory letters.
+  std::map<std::string, std::vector<char> > invlet_cache;
+  void update_cache_with_item(item& newit);
+
   item remove_item(invstack::iterator iter);
-  void assign_empty_invlet(item &it, player *p = NULL);
+  void assign_empty_invlet(item &it);
   invstack items;
   bool sorted;
 };

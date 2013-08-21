@@ -9,6 +9,14 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug SDL|Win32">
+      <Configuration>Debug SDL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug SDL|x64">
+      <Configuration>Debug SDL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -17,24 +25,44 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SDL|Win32">
+      <Configuration>Release SDL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SDL|x64">
+      <Configuration>Release SDL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FE1372AC-5F90-447E-BBCA-1B253836EB77}</ProjectGuid>
     <RootNamespace>Cataclysm</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Debug SDL'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+  <PropertyGroup Condition="'$(Configuration)'=='Release' or '$(Configuration)'=='Release SDL'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'" Label="Configuration">
-    <PlatformToolset>Windows7.1SDK</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release SDL|Win32'">
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug SDL|Win32'">
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -43,15 +71,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
-      <PreprocessorDefinitions>_MBCS;NOMINMAX;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_MBCS;NOMINMAX;_USE_MATH_DEFINES;USE_WINMAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DisableSpecificWarnings>4100;4127;4996</DisableSpecificWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug' or '$(Configuration)'=='Debug SDL'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -60,20 +87,40 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release' or '$(Configuration)'=='Release SDL'">
     <Link>
       <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug SDL' or '$(Configuration)'=='Release SDL'">
+    <ClCompile>
+      <PreprocessorDefinitions>TILES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>SDL.lib;SDL_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <PropertyGroup>
+    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <CustomBuildStep>
+      <Command>getversion.cmd</Command>
+      <Message>Generationg version.h</Message>
+      <Outputs>version.h</Outputs>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\action.cpp" />
     <ClCompile Include="..\addiction.cpp" />
     <ClCompile Include="..\artifact.cpp" />
+    <ClCompile Include="..\auto_pickup.cpp" />
     <ClCompile Include="..\basecamp.cpp" />
     <ClCompile Include="..\bionics.cpp" />
     <ClCompile Include="..\bodypart.cpp" />
+    <ClCompile Include="..\building_generation.cpp" />
     <ClCompile Include="..\calendar.cpp" />
-    <ClCompile Include="..\catacurse.cpp" />
     <ClCompile Include="..\catajson.cpp" />
     <ClCompile Include="..\color.cpp" />
     <ClCompile Include="..\computer.cpp" />
@@ -97,9 +144,7 @@
     <ClCompile Include="..\item.cpp" />
     <ClCompile Include="..\item_factory.cpp" />
     <ClCompile Include="..\item_group.cpp" />
-    <ClCompile Include="..\itypedef.cpp">
-      <Optimization>Disabled</Optimization>
-    </ClCompile>
+    <ClCompile Include="..\itypedef.cpp" />
     <ClCompile Include="..\iuse.cpp" />
     <ClCompile Include="..\keypress.cpp" />
     <ClCompile Include="..\lightmap.cpp" />
@@ -112,6 +157,7 @@
     <ClCompile Include="..\mapgen.cpp" />
     <ClCompile Include="..\mapgenformat.cpp" />
     <ClCompile Include="..\mapitemsdef.cpp" />
+    <ClCompile Include="..\material.cpp" />
     <ClCompile Include="..\melee.cpp" />
     <ClCompile Include="..\mission.cpp" />
     <ClCompile Include="..\missiondef.cpp" />
@@ -136,11 +182,13 @@
     <ClCompile Include="..\options.cpp" />
     <ClCompile Include="..\output.cpp" />
     <ClCompile Include="..\overmap.cpp" />
+    <ClCompile Include="..\overmapbuffer.cpp" />
     <ClCompile Include="..\player.cpp" />
     <ClCompile Include="..\posix_time.cpp" />
     <ClCompile Include="..\profession.cpp" />
     <ClCompile Include="..\ranged.cpp" />
     <ClCompile Include="..\rng.cpp" />
+    <ClCompile Include="..\sdlcurse.cpp" />
     <ClCompile Include="..\settlement.cpp" />
     <ClCompile Include="..\setvector.cpp" />
     <ClCompile Include="..\skill.cpp" />
@@ -149,12 +197,14 @@
     <ClCompile Include="..\trapdef.cpp" />
     <ClCompile Include="..\trapfunc.cpp" />
     <ClCompile Include="..\tutorial.cpp" />
+    <ClCompile Include="..\ui.cpp" />
     <ClCompile Include="..\vehicle.cpp" />
     <ClCompile Include="..\veh_interact.cpp" />
     <ClCompile Include="..\veh_typedef.cpp" />
     <ClCompile Include="..\version.cpp" />
     <ClCompile Include="..\weather.cpp" />
     <ClCompile Include="..\weather_data.cpp" />
+    <ClCompile Include="..\wincurse.cpp" />
     <ClCompile Include="..\wish.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -162,9 +212,11 @@
     <ClInclude Include="..\addiction.h" />
     <ClInclude Include="..\artifact.h" />
     <ClInclude Include="..\artifactdata.h" />
+    <ClInclude Include="..\auto_pickup.h" />
     <ClInclude Include="..\basecamp.h" />
     <ClInclude Include="..\bionics.h" />
     <ClInclude Include="..\bodypart.h" />
+    <ClInclude Include="..\building_generation.h" />
     <ClInclude Include="..\calendar.h" />
     <ClInclude Include="..\catacurse.h" />
     <ClInclude Include="..\catajson.h" />
@@ -182,6 +234,7 @@
     <ClInclude Include="..\faction.h" />
     <ClInclude Include="..\game.h" />
     <ClInclude Include="..\gamemode.h" />
+    <ClInclude Include="..\get_version.h" />
     <ClInclude Include="..\graffiti.h" />
     <ClInclude Include="..\helper.h" />
     <ClInclude Include="..\iexamine.h" />
@@ -200,6 +253,7 @@
     <ClInclude Include="..\mapdata.h" />
     <ClInclude Include="..\mapgenformat.h" />
     <ClInclude Include="..\mapitems.h" />
+    <ClInclude Include="..\material.h" />
     <ClInclude Include="..\mission.h" />
     <ClInclude Include="..\monattack.h" />
     <ClInclude Include="..\mondeath.h" />
@@ -215,6 +269,7 @@
     <ClInclude Include="..\options.h" />
     <ClInclude Include="..\output.h" />
     <ClInclude Include="..\overmap.h" />
+    <ClInclude Include="..\overmapbuffer.h" />
     <ClInclude Include="..\picojson.h" />
     <ClInclude Include="..\player.h" />
     <ClInclude Include="..\pldata.h" />
@@ -226,13 +281,16 @@
     <ClInclude Include="..\skill.h" />
     <ClInclude Include="..\text_snippets.h" />
     <ClInclude Include="..\tileray.h" />
+    <ClInclude Include="..\translations.h" />
     <ClInclude Include="..\trap.h" />
     <ClInclude Include="..\tutorial.h" />
+    <ClInclude Include="..\ui.h" />
     <ClInclude Include="..\vehicle.h" />
     <ClInclude Include="..\veh_interact.h" />
     <ClInclude Include="..\veh_type.h" />
+    <ClInclude Include="..\version.h" />
+    <ClInclude Include="..\wdirent.h" />
     <ClInclude Include="..\weather.h" />
-    <ClInclude Include="..\weather_data.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\resource.rc" />

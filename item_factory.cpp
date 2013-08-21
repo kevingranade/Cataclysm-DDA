@@ -3,6 +3,7 @@
 #include "enums.h"
 #include "catajson.h"
 #include "addiction.h"
+#include "translations.h"
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
@@ -11,7 +12,7 @@
 
 // mfb(n) converts a flag to its appropriate position in covers's bitfield
 #ifndef mfb
-#define mfb(n) long(1 << (n))
+#define mfb(n) static_cast <unsigned long> (1 << (n))
 #endif
 
 Item_factory* item_controller = new Item_factory();
@@ -20,8 +21,8 @@ Item_factory* item_controller = new Item_factory();
 Item_factory::Item_factory(){
     init();
     m_missing_item = new itype();
-    m_missing_item->name = "Error: Item Missing.";
-    m_missing_item->description = "There is only the space where an object should be, but isn't. No item template of this type exists.";
+    m_missing_item->name = _("Error: Item Missing.");
+    m_missing_item->description = _("There is only the space where an object should be, but isn't. No item template of this type exists.");
     m_templates["MISSING_ITEM"]=m_missing_item;
 }
 
@@ -34,14 +35,11 @@ void Item_factory::init(){
     iuse_function_list["ROYAL_JELLY"] = &iuse::royal_jelly;
     iuse_function_list["BANDAGE"] = &iuse::bandage;
     iuse_function_list["FIRSTAID"] = &iuse::firstaid;
+    iuse_function_list["DISINFECTANT"] = &iuse::disinfectant;
     iuse_function_list["CAFF"] = &iuse::caff;
     iuse_function_list["ALCOHOL"] = &iuse::alcohol;
     iuse_function_list["ALCOHOL_WEAK"] = &iuse::alcohol_weak;
-    iuse_function_list["PKILL_1"] = &iuse::pkill_1;
-    iuse_function_list["PKILL_2"] = &iuse::pkill_2;
-    iuse_function_list["PKILL_3"] = &iuse::pkill_3;
-    iuse_function_list["PKILL_4"] = &iuse::pkill_4;
-    iuse_function_list["PKILL_L"] = &iuse::pkill_l;
+    iuse_function_list["PKILL"] = &iuse::pkill;
     iuse_function_list["XANAX"] = &iuse::xanax;
     iuse_function_list["CIG"] = &iuse::cig;
     iuse_function_list["ANTIBIOTIC"] = &iuse::antibiotic;
@@ -50,6 +48,8 @@ void Item_factory::init(){
     iuse_function_list["CRACK"] = &iuse::crack;
     iuse_function_list["GRACK"] = &iuse::grack;
     iuse_function_list["METH"] = &iuse::meth;
+    iuse_function_list["VITAMINS"] = &iuse::vitamins;
+    iuse_function_list["VACCINE"] = &iuse::vaccine;
     iuse_function_list["POISON"] = &iuse::poison;
     iuse_function_list["HALLU"] = &iuse::hallu;
     iuse_function_list["THORAZINE"] = &iuse::thorazine;
@@ -61,7 +61,6 @@ void Item_factory::init(){
     iuse_function_list["INHALER"] = &iuse::inhaler;
     iuse_function_list["BLECH"] = &iuse::blech;
     iuse_function_list["MUTAGEN"] = &iuse::mutagen;
-    iuse_function_list["MUTAGEN_3"] = &iuse::mutagen_3;
     iuse_function_list["PURIFIER"] = &iuse::purifier;
     iuse_function_list["MARLOSS"] = &iuse::marloss;
     iuse_function_list["DOGFOOD"] = &iuse::dogfood;
@@ -76,13 +75,15 @@ void Item_factory::init(){
     iuse_function_list["HAMMER"] = &iuse::hammer;
     iuse_function_list["LIGHT_OFF"] = &iuse::light_off;
     iuse_function_list["LIGHT_ON"] = &iuse::light_on;
+    iuse_function_list["GASOLINE_LANTERN_OFF"] = &iuse::gasoline_lantern_off;
+    iuse_function_list["GASOLINE_LANTERN_ON"] = &iuse::gasoline_lantern_on;
     iuse_function_list["LIGHTSTRIP"] = &iuse::lightstrip;
     iuse_function_list["LIGHTSTRIP_ACTIVE"] = &iuse::lightstrip_active;
     iuse_function_list["GLOWSTICK"] = &iuse::glowstick;
     iuse_function_list["GLOWSTICK_ACTIVE"] = &iuse::glowstick_active;
     iuse_function_list["DIRECTIONAL_ANTENNA"] = &iuse::directional_antenna;
-    iuse_function_list["DEVAC"] = &iuse::devac;
     iuse_function_list["CAUTERIZE_ELEC"] = &iuse::cauterize_elec;
+    iuse_function_list["SOLDER_WELD"] = &iuse::solder_weld;
     iuse_function_list["WATER_PURIFIER"] = &iuse::water_purifier;
     iuse_function_list["TWO_WAY_RADIO"] = &iuse::two_way_radio;
     iuse_function_list["RADIO_OFF"] = &iuse::radio_off;
@@ -97,8 +98,17 @@ void Item_factory::init(){
     iuse_function_list["CROWBAR"] = &iuse::crowbar;
     iuse_function_list["MAKEMOUND"] = &iuse::makemound;
     iuse_function_list["DIG"] = &iuse::dig;
+    iuse_function_list["SIPHON"] = &iuse::siphon;
     iuse_function_list["CHAINSAW_OFF"] = &iuse::chainsaw_off;
     iuse_function_list["CHAINSAW_ON"] = &iuse::chainsaw_on;
+    iuse_function_list["SHISHKEBAB_OFF"] = &iuse::shishkebab_off;
+    iuse_function_list["SHISHKEBAB_ON"] = &iuse::shishkebab_on;
+    iuse_function_list["FIREMACHETE_OFF"] = &iuse::firemachete_off;
+    iuse_function_list["FIREMACHETE_ON"] = &iuse::firemachete_on;
+    iuse_function_list["BROADFIRE_OFF"] = &iuse::broadfire_off;
+    iuse_function_list["BROADFIRE_ON"] = &iuse::broadfire_on;
+    iuse_function_list["FIREKATANA_OFF"] = &iuse::firekatana_off;
+    iuse_function_list["FIREKATANA_ON"] = &iuse::firekatana_on;
     iuse_function_list["JACKHAMMER"] = &iuse::jackhammer;
     iuse_function_list["JACQUESHAMMER"] = &iuse::jacqueshammer;
     iuse_function_list["PICKAXE"] = &iuse::pickaxe;
@@ -124,6 +134,7 @@ void Item_factory::init(){
     iuse_function_list["SMOKEBOMB_ACT"] = &iuse::smokebomb_act;
     iuse_function_list["ACIDBOMB"] = &iuse::acidbomb;
     iuse_function_list["ACIDBOMB_ACT"] = &iuse::acidbomb_act;
+    iuse_function_list["ARROW_FLAMABLE"] = &iuse::arrow_flamable;
     iuse_function_list["MOLOTOV"] = &iuse::molotov;
     iuse_function_list["MOLOTOV_LIT"] = &iuse::molotov_lit;
     iuse_function_list["DYNAMITE"] = &iuse::dynamite;
@@ -140,9 +151,12 @@ void Item_factory::init(){
     iuse_function_list["TURRET"] = &iuse::turret;
     iuse_function_list["UPS_OFF"] = &iuse::UPS_off;
     iuse_function_list["UPS_ON"] = &iuse::UPS_on;
+    iuse_function_list["adv_UPS_OFF"] = &iuse::adv_UPS_off;
+    iuse_function_list["adv_UPS_ON"] = &iuse::adv_UPS_on;
     iuse_function_list["TAZER"] = &iuse::tazer;
     iuse_function_list["MP3"] = &iuse::mp3;
     iuse_function_list["MP3_ON"] = &iuse::mp3_on;
+    iuse_function_list["PORTABLE_GAME"] = &iuse::portable_game;
     iuse_function_list["VORTEX"] = &iuse::vortex;
     iuse_function_list["DOG_WHISTLE"] = &iuse::dog_whistle;
     iuse_function_list["VACUTAINER"] = &iuse::vacutainer;
@@ -165,6 +179,11 @@ void Item_factory::init(){
     iuse_function_list["LAW"] = &iuse::LAW;
     iuse_function_list["HEATPACK"] = &iuse::heatpack;
     iuse_function_list["DEJAR"] = &iuse::dejar;
+    iuse_function_list["RAD_BADGE"] = &iuse::rad_badge;
+    iuse_function_list["BOOTS"] = &iuse::boots;
+    iuse_function_list["ABSORBENT"] = &iuse::towel;
+    iuse_function_list["UNFOLD_BICYCLE"] = &iuse::unfold_bicycle;
+    iuse_function_list["ADRENALINE_INJECTOR"] = &iuse::adrenaline_injector;
     // MACGUFFINS
     iuse_function_list["MCG_NOTE"] = &iuse::mcg_note;
     // ARTIFACTS
@@ -172,39 +191,6 @@ void Item_factory::init(){
     // It examines the item's artifact-specific properties
     // See artifact.h for a list
     iuse_function_list["ARTIFACT"] = &iuse::artifact;
-
-    // ITEM FLAGS
-    item_flags_list["LIGHT_1"] = mfb(IF_LIGHT_1);
-    item_flags_list["LIGHT_4"] = mfb(IF_LIGHT_4);
-    item_flags_list["LIGHT_8"] = mfb(IF_LIGHT_8);
-    item_flags_list["LIGHT_20"] = mfb(IF_LIGHT_20);
-    item_flags_list["FIRE"] = mfb(IF_FIRE);
-    item_flags_list["SPEAR"] = mfb(IF_SPEAR);
-    item_flags_list["STAB"] = mfb(IF_STAB);
-    item_flags_list["WRAP"] = mfb(IF_WRAP);
-    item_flags_list["MESSY"] = mfb(IF_MESSY);
-    item_flags_list["RELOAD_ONE"] = mfb(IF_RELOAD_ONE);
-    item_flags_list["STR_RELOAD"] = mfb(IF_STR_RELOAD);
-    item_flags_list["STR8_DRAW"] = mfb(IF_STR8_DRAW);
-    item_flags_list["STR10_DRAW"] = mfb(IF_STR10_DRAW);
-    item_flags_list["USE_UPS"] = mfb(IF_USE_UPS);
-    item_flags_list["RELOAD_AND_SHOOT"] = mfb(IF_RELOAD_AND_SHOOT);
-    item_flags_list["FIRE_100"] = mfb(IF_FIRE_100);
-    item_flags_list["GRENADE"] = mfb(IF_GRENADE);
-    item_flags_list["CHARGE"] = mfb(IF_CHARGE);
-    item_flags_list["SHOCK"] = mfb(IF_SHOCK);
-    item_flags_list["UNARMED_WEAPON"] = mfb(IF_UNARMED_WEAPON);
-    item_flags_list["NO_UNWIELD"] = mfb(IF_NO_UNWIELD);
-    item_flags_list["NO_UNLOAD"] = mfb(IF_NO_UNLOAD);
-    item_flags_list["BACKBLAST"] = mfb(IF_BACKBLAST);
-    item_flags_list["MODE_AUX"] = mfb(IF_MODE_AUX);
-    item_flags_list["MODE_BURST"] = mfb(IF_MODE_BURST);
-    item_flags_list["HOT"] = mfb(IF_HOT);
-    item_flags_list["EATEN_HOT"] = mfb(IF_EATEN_HOT);
-    item_flags_list["ROTTEN"] = mfb(IF_ROTTEN);
-    item_flags_list["VARSIZE"] = mfb(IF_VARSIZE);
-    item_flags_list["FIT"] = mfb(IF_FIT);
-    item_flags_list["DOUBLE_AMMO"] = mfb(IF_DOUBLE_AMMO);
 
     // Offensive Techniques
     techniques_list["SWEEP"] = mfb(TEC_SWEEP);
@@ -216,6 +202,7 @@ void Item_factory::init(){
     techniques_list["FEINT"] = mfb(TEC_FEINT);
     techniques_list["THROW"] = mfb(TEC_THROW);
     techniques_list["DISARM"] = mfb(TEC_DISARM);
+    techniques_list["FLAMING"] = mfb(TEC_FLAMING);
     // Defensive Techniques
     techniques_list["BLOCK"] = mfb(TEC_BLOCK);
     techniques_list["BLOCK_LEGS"] = mfb(TEC_BLOCK_LEGS);
@@ -226,53 +213,6 @@ void Item_factory::init(){
     techniques_list["BREAK"] = mfb(TEC_BREAK);
     techniques_list["DEF_THROW"] = mfb(TEC_DEF_THROW);
     techniques_list["DEF_DISARM"] = mfb(TEC_DEF_DISARM);
-
-    //Ammo lists
-    ammo_flags_list["NULL"] = mfb(AT_NULL);
-    ammo_flags_list["THREAD"] = mfb(AT_THREAD);
-    ammo_flags_list["BATT"] = mfb(AT_BATT);
-    ammo_flags_list["PLUT"] = mfb(AT_PLUT);
-    ammo_flags_list["NAIL"] = mfb(AT_NAIL);
-    ammo_flags_list["BB"] = mfb(AT_BB);
-    ammo_flags_list["BOLT"] = mfb(AT_BOLT);
-    ammo_flags_list["ARROW"] = mfb(AT_ARROW);
-    ammo_flags_list["SHOT"] = mfb(AT_SHOT);
-    ammo_flags_list["22"] = mfb(AT_22);
-    ammo_flags_list["9MM"] = mfb(AT_9MM);
-    ammo_flags_list["762x25"] = mfb(AT_762x25);
-    ammo_flags_list["38"] = mfb(AT_38);
-    ammo_flags_list["40"] = mfb(AT_40);
-    ammo_flags_list["44"] = mfb(AT_44);
-    ammo_flags_list["45"] = mfb(AT_45);
-    ammo_flags_list["57"] = mfb(AT_57);
-    ammo_flags_list["46"] = mfb(AT_46);
-    ammo_flags_list["762"] = mfb(AT_762);
-    ammo_flags_list["223"] = mfb(AT_223);
-    ammo_flags_list["3006"] = mfb(AT_3006);
-    ammo_flags_list["308"] = mfb(AT_308);
-    ammo_flags_list["40MM"] = mfb(AT_40MM);
-    ammo_flags_list["66MM"] = mfb(AT_66MM);
-    ammo_flags_list["GAS"] = mfb(AT_GAS);
-    ammo_flags_list["FUSION"] = mfb(AT_FUSION);
-    ammo_flags_list["MUSCLE"] = mfb(AT_MUSCLE);
-    ammo_flags_list["12MM"] = mfb(AT_12MM);
-    ammo_flags_list["PLASMA"] = mfb(AT_PLASMA);
-    ammo_flags_list["WATER"] = mfb(AT_WATER);
-    ammo_flags_list["PEBBLE"] = mfb(AT_PEBBLE);
-
-    ammo_effects_list["FLAME"] = mfb(AMMO_FLAME);
-    ammo_effects_list["INCENDIARY"] = mfb(AMMO_INCENDIARY);
-    ammo_effects_list["EXPLOSIVE"] = mfb(AMMO_EXPLOSIVE);
-    ammo_effects_list["FRAG"] = mfb(AMMO_FRAG);
-    ammo_effects_list["NAPALM"] = mfb(AMMO_NAPALM);
-    ammo_effects_list["EXPLOSIVE_BIG"] = mfb(AMMO_EXPLOSIVE_BIG);
-    ammo_effects_list["TEARGAS"] = mfb(AMMO_TEARGAS);
-    ammo_effects_list["SMOKE"] = mfb(AMMO_SMOKE);
-    ammo_effects_list["TRAIL"] = mfb(AMMO_TRAIL);
-    ammo_effects_list["FLASHBANG"] = mfb(AMMO_FLASHBANG);
-    ammo_effects_list["STREAM"] = mfb(AMMO_STREAM);
-    ammo_effects_list["COOKOFF"] = mfb(AMMO_COOKOFF);
-    ammo_effects_list["LASER"] = mfb(AMMO_LASER);
 
     bodyparts_list["TORSO"] = mfb(bp_torso);
     bodyparts_list["HEAD"] = mfb(bp_head);
@@ -285,8 +225,13 @@ void Item_factory::init(){
 }
 
 //Will eventually be deprecated - Loads existing item format into the item factory, and vice versa
-void Item_factory::init(game* main_game){
-    load_item_templates(); // this one HAS to be called after game is created
+void Item_factory::init(game* main_game) throw(std::string){
+    try {
+        load_item_templates(); // this one HAS to be called after game is created
+    }
+    catch (std::string &error_message) {
+        throw;
+    }
     // Make a copy of our items loaded from JSON
     std::map<Item_tag, itype*> new_templates = m_templates;
     //Copy the hardcoded template pointers to the factory list
@@ -297,6 +242,8 @@ void Item_factory::init(game* main_game){
     for(std::map<Item_tag, itype*>::iterator iter = new_templates.begin(); iter != new_templates.end(); ++iter) {
       standard_itype_ids.push_back(iter->first);
     }
+    load_item_groups_from(main_game, "data/raw/item_groups.json");
+
 }
 
 //Returns the template with the given identification tag
@@ -338,7 +285,7 @@ const Item_tag Item_factory::id_from(const Item_tag group_tag){
 
 
 item Item_factory::create(Item_tag id, int created_at){
-    return item(find_template(id),0);
+    return item(find_template(id), created_at);
 }
 Item_list Item_factory::create(Item_tag id, int created_at, int quantity){
     Item_list new_items;
@@ -366,30 +313,46 @@ Item_list Item_factory::create_random(int created_at, int quantity){
     return new_items;
 }
 
+bool Item_factory::group_contains_item(Item_tag group_tag, Item_tag item) {
+	Item_group *current_group = m_template_groups.find(group_tag)->second;
+	if(current_group) {
+		return current_group->has_item(item);
+	} else {
+		return 0;
+	}
+}
+
 ///////////////////////
 // DATA FILE READING //
 ///////////////////////
 
-void Item_factory::load_item_templates(){
+void Item_factory::load_item_templates() throw(std::string){
+    try {
     load_item_templates_from("data/raw/items/melee.json");
     load_item_templates_from("data/raw/items/ranged.json");
     load_item_templates_from("data/raw/items/ammo.json");
     load_item_templates_from("data/raw/items/mods.json");
     load_item_templates_from("data/raw/items/tools.json");
+    load_item_templates_from("data/raw/items/containers.json");
     load_item_templates_from("data/raw/items/comestibles.json");
     load_item_templates_from("data/raw/items/armor.json");
     load_item_templates_from("data/raw/items/books.json");
-    load_item_groups_from("data/raw/item_groups.json");
+    load_item_templates_from("data/raw/items/archery.json");
+    }
+    catch (std::string &error_message) {
+        throw;
+    }
 }
 
 // Load values from this data file into m_templates
-void Item_factory::load_item_templates_from(const std::string file_name){
+void Item_factory::load_item_templates_from(const std::string file_name) throw (std::string){
     catajson all_items(file_name);
 
-    if (! all_items.is_array()) {
-        debugmsg("%s is not an array of item_templates", file_name.c_str());
-        exit(2);
-    }
+    if(! json_good())
+    	throw (std::string)"Could not open " + file_name;
+
+    if (! all_items.is_array())
+        throw file_name + (std::string)"is not an array of item_templates";
 
     //Crawl through and extract the items
     for (all_items.set_begin(); all_items.has_curr(); all_items.next()) {
@@ -424,17 +387,19 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                         it_gunmod* gunmod_template = new it_gunmod();
                         gunmod_template->damage = entry.get("damage_modifier").as_int();;
                         gunmod_template->loudness = entry.get("loudness_modifier").as_int();
-                        gunmod_template->newtype = ammo_from_string(entry.get("ammo_modifier").as_string());
+                        gunmod_template->newtype = entry.get("ammo_modifier").as_string();
                         gunmod_template->used_on_pistol = is_mod_target(entry.get("mod_targets"), "pistol");
                         gunmod_template->used_on_shotgun = is_mod_target(entry.get("mod_targets"), "shotgun");
                         gunmod_template->used_on_smg = is_mod_target(entry.get("mod_targets"), "smg");
                         gunmod_template->used_on_rifle = is_mod_target(entry.get("mod_targets"), "rifle");
-                        gunmod_template->accuracy = entry.get("accuracy_modifier").as_int();
+                        gunmod_template->dispersion = entry.get("dispersion_modifier").as_int();
                         gunmod_template->recoil = entry.get("recoil_modifier").as_int();
                         gunmod_template->burst = entry.get("burst_modifier").as_int();
                         gunmod_template->clip = entry.get("clip_size_modifier").as_int();
-                        gunmod_template->techniques = (!entry.has("ammo") ? 0 :
-                                                 flags_from_json(entry.get("techniques"), "ammo"));
+                        if( entry.has("acceptable_ammo") ) {
+                            tags_from_json( entry.get("acceptable_ammo"),
+                                            gunmod_template->acceptible_ammo_types );
+                        }
                         new_item_template = gunmod_template;
                     }
                     else if (type_label == "COMESTIBLE")
@@ -457,11 +422,11 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                     else if (type_label == "GUN")
                     {
                         it_gun* gun_template = new it_gun();
-                        gun_template->ammo = ammo_from_string(entry.get("ammo").as_string());
+                        gun_template->ammo = entry.get("ammo").as_string();
                         gun_template->skill_used = Skill::skill(entry.get("skill").as_string());
                         gun_template->dmg_bonus = entry.get("ranged_damage").as_int();
                         gun_template->range = entry.get("range").as_int();
-                        gun_template->accuracy = entry.get("accuracy").as_int();
+                        gun_template->dispersion = entry.get("dispersion").as_int();
                         gun_template->recoil = entry.get("recoil").as_int();
                         gun_template->durability = entry.get("durability").as_int();
                         gun_template->burst = entry.get("burst").as_int();
@@ -473,7 +438,7 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                     else if (type_label == "TOOL")
                     {
                         it_tool* tool_template = new it_tool();
-                        tool_template->ammo = ammo_from_string(entry.get("ammo").as_string());
+                        tool_template->ammo = entry.get("ammo").as_string();
                         tool_template->max_charges = entry.get("max_charges").as_int();
                         tool_template->def_charges = entry.get("initial_charges").as_int();
                         tool_template->charges_per_use = entry.get("charges_per_use").as_int();
@@ -485,20 +450,20 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                     else if (type_label == "AMMO")
                     {
                         it_ammo* ammo_template = new it_ammo();
-                        ammo_template->type =
-                            ammo_from_string(
-                                entry.get("ammo_type").as_string());
+                        ammo_template->type = entry.get("ammo_type").as_string();
+                        if(entry.has("casing")) {
+                            ammo_template->casing = entry.get("casing").as_string();
+                        }
                         ammo_template->damage = entry.get("damage").as_int();
                         ammo_template->pierce = entry.get("pierce").as_int();
                         ammo_template->range = entry.get("range").as_int();
-                        ammo_template->accuracy =
-                            entry.get("accuracy").as_int();
+                        ammo_template->dispersion =
+                            entry.get("dispersion").as_int();
                         ammo_template->recoil = entry.get("recoil").as_int();
                         ammo_template->count = entry.get("count").as_int();
-                        ammo_template->ammo_effects =
-                            (!entry.has("effects") ? 0 :
-                             flags_from_json(entry.get("effects"),
-                                             "ammo_effects"));
+                        if( entry.has("effects") ) {
+                            tags_from_json(entry.get("effects"), ammo_template->ammo_effects);
+                        }
 
                         new_item_template = ammo_template;
                     }
@@ -507,8 +472,8 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                         it_armor* armor_template = new it_armor();
 
                         armor_template->encumber = entry.get("encumberance").as_int();
-                        armor_template->dmg_resist = entry.get("bashing_protection").as_int();
-                        armor_template->cut_resist = entry.get("cutting_protection").as_int();
+                        armor_template->coverage = entry.get("coverage").as_int();
+                        armor_template->thickness = entry.get("material_thickness").as_int();
                         armor_template->env_resist = entry.get("enviromental_protection").as_int();
                         armor_template->warmth = entry.get("warmth").as_int();
                         armor_template->storage = entry.get("storage").as_int();
@@ -531,6 +496,14 @@ void Item_factory::load_item_templates_from(const std::string file_name){
 
                         new_item_template = book_template;
                     }
+                    else if (type_label == "CONTAINER")
+                    {
+                        it_container* container_template = new it_container();
+
+                        container_template->contains = entry.get("contains").as_int();
+
+                        new_item_template = container_template;
+                    }
                     else
                     {
                         debugmsg("Item definition for %s skipped, unrecognized type: %s", new_id.c_str(),
@@ -542,17 +515,16 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                 m_templates[new_id] = new_item_template;
 
                 // And then proceed to assign the correct field
-                new_item_template->rarity = entry.get("rarity").as_int();
                 new_item_template->price = entry.get("price").as_int();
-                new_item_template->name = entry.get("name").as_string();
+                new_item_template->name = _(entry.get("name").as_string().c_str());
                 new_item_template->sym = entry.get("symbol").as_char();
                 new_item_template->color = color_from_string(entry.get("color").as_string());
-                new_item_template->description = entry.get("description").as_string();
+                new_item_template->description = _(entry.get("description").as_string().c_str());
                 if(entry.has("material")){
                   set_material_from_json(new_id, entry.get("material"));
                 } else {
-                  new_item_template->m1 = MNULL;
-                  new_item_template->m2 = MNULL;
+                  new_item_template->m1 = "null";
+                  new_item_template->m2 = "null";
                 }
                 Item_tag new_phase = "solid";
                 if(entry.has("phase")){
@@ -565,8 +537,29 @@ void Item_factory::load_item_templates_from(const std::string file_name){
                 new_item_template->melee_cut = entry.get("cutting").as_int();
                 new_item_template->m_to_hit = entry.get("to_hit").as_int();
 
-                new_item_template->item_flags = (!entry.has("flags") ? 0 :
-                                                 flags_from_json(entry.get("flags")));
+                if( entry.has("flags") )
+                {
+                    new_item_template->item_tags = entry.get("flags").as_tags();
+                    /*
+                    List of current flags
+                    FIT - Reduces encumberance by one
+                    VARSIZE - Can be made to fit via tailoring
+                    OVERSIZE - Can always be worn no matter encumberance/mutations/bionics/etc
+                    HOOD - Will increase warmth for head if head is cold and player is not wearing a helmet (headwear of material that is not wool or cotton)
+                    POCKETS - Will increase warmth for hands if hands are cold and the player is wielding nothing
+                    WATCH - Shows the current time, instead of sun/moon position
+                    ALARMCLOCK - Has an alarmclock feature
+                    MALE_TYPICAL - Typically only worn by men.
+                    FEMALE_TYPICAL - Typically only worn by women.
+                    USE_EAT_VERB - Use the eat verb, even if it's a liquid(soup, jam etc.)
+
+                    Container-only flags:
+                    SEALS
+                    RIGID
+                    WATERTIGHT
+                    */
+                }
+
                 new_item_template->techniques = (!entry.has("techniques") ? 0 :
                                                  flags_from_json(entry.get("techniques"), "techniques"));
                 new_item_template->use = (!entry.has("use_action") ? &iuse::none :
@@ -574,78 +567,103 @@ void Item_factory::load_item_templates_from(const std::string file_name){
             }
         }
     }
+    if(!json_good())
+        throw "There was an error reading " + file_name;
 }
 
 // Load values from this data file into m_template_groups
-void Item_factory::load_item_groups_from(const std::string file_name){
+void Item_factory::load_item_groups_from( game *g, const std::string file_name ) throw ( std::string ) {
     std::ifstream data_file;
     picojson::value input_value;
 
     data_file.open(file_name.c_str());
+
+    if(! data_file.good()) {
+        throw "Could not read " + file_name;
+    }
+
     data_file >> input_value;
     data_file.close();
 
-    //Handle any obvious errors on file load
-    std::string err = picojson::get_last_error();
-    if (! err.empty()) {
-        std::cerr << "In JSON file \"" << file_name << "\"" << data_file << ":" << err << std::endl;
-        exit(1);
+    if(! json_good()) {
+        throw "The data in " + file_name + " is not an array";
     }
     if (! input_value.is<picojson::array>()) {
-        std::cerr << file_name << " is not an array of item groups"<< std::endl;
-        exit(2);
+        throw file_name + "is not an array of item groups";
     }
 
     //Crawl through once and create an entry for every definition
     const picojson::array& all_items = input_value.get<picojson::array>();
-    for (picojson::array::const_iterator entry = all_items.begin(); entry != all_items.end(); ++entry) {
-        if( !(entry->is<picojson::object>()) ){
-            std::cerr << "Invalid group definition, entry not a JSON object" << std::endl;
-        }
-        else{
-            const picojson::value::object& entry_body = entry->get<picojson::object>();
+    for (picojson::array::const_iterator entry = all_items.begin();
+         entry != all_items.end(); ++entry) {
+        // TODO: Make sure we have at least an item or group child, as otherwise
+        //       later things will bug out.
 
-            // The one element we absolutely require for an item definition is an id
-            picojson::value::object::const_iterator key_pair = entry_body.find("id");
-            if( key_pair == entry_body.end() || !(key_pair->second.is<std::string>()) ){
-                std::cerr << "Group definition skipped, no id found or id was malformed." << std::endl;
-            } else {
-                Item_tag group_id = key_pair->second.get<std::string>();
-                m_template_groups[group_id] = new Item_group(group_id);
-            }
+        if( !(entry->is<picojson::object>()) ){
+            debugmsg("Invalid group definition, entry not a JSON object");
+            continue;
         }
+        const picojson::value::object& entry_body = entry->get<picojson::object>();
+
+        // The one element we absolutely require for an item definition is an id
+        picojson::value::object::const_iterator key_pair = entry_body.find( "id" );
+        if( key_pair == entry_body.end() || !(key_pair->second.is<std::string>()) ) {
+            debugmsg("Group definition skipped, no id found or id was malformed.");
+            continue;
+        }
+
+        Item_tag group_id = key_pair->second.get<std::string>();
+        m_template_groups[group_id] = new Item_group(group_id);
     }
     //Once all the group definitions are set, fill them out
-    for (picojson::array::const_iterator entry = all_items.begin(); entry != all_items.end(); ++entry) {
+    for (picojson::array::const_iterator entry = all_items.begin();
+         entry != all_items.end(); ++entry) {
         const picojson::value::object& entry_body = entry->get<picojson::object>();
 
         Item_tag group_id = entry_body.find("id")->second.get<std::string>();
-        Item_group current_group = *m_template_groups.find(group_id)->second;
+        Item_group *current_group = m_template_groups.find(group_id)->second;
 
         //Add items
         picojson::value::object::const_iterator key_pair = entry_body.find("items");
-        if( key_pair != entry_body.end() ){
-            if( !(key_pair->second.is<picojson::array>()) ){
-                std::cerr << "Invalid item list for group definition '"+group_id+"', list of items not an array." << std::endl;
-            } else {
-                //We have confirmed that we have a list of SOMETHING, now let's add them one at a time.
-                const picojson::array& items_to_add = key_pair->second.get<picojson::array>();
-                for (picojson::array::const_iterator item_pair = items_to_add.begin(); item_pair != items_to_add.end(); ++item_pair) {
-                    //Before adding, make sure this element is in the right format, namely ["TAG_NAME", frequency number]
-                    if(!(item_pair->is<picojson::array>())){
-                        std::cerr << "Invalid item list for group definition '"+group_id+"', element is not an array." << std::endl;
-                    } else if(item_pair->get<picojson::array>().size()!=2){
-                        std::cerr << "Invalid item list for group definition '"+group_id+"', element does not have 2 values." << std::endl;
-                    } else {
-                        picojson::array item_frequency_array = item_pair->get<picojson::array>();
-                        //Finally, insure that the first value is a string, and the second is a number
-                        if(!item_frequency_array[0].is<std::string>() || !item_frequency_array[1].is<double>() ){
-                            std::cerr << "Invalid item list for group definition '"+group_id+"', element is not a valid tag/frequency pair." << std::endl;
-                        } else {
-                            current_group.add_entry(item_frequency_array[0].get<std::string>(), (int)item_frequency_array[1].get<double>());
-                        }
-                    }
+        if( key_pair != entry_body.end() ) {
+            if( !(key_pair->second.is<picojson::array>()) ) {
+                debugmsg("Invalid item list for group definition '%s', list of items not an array.",
+                         group_id.c_str());
+                // We matched the find above, so we're NOT a group.
+                continue;
+            }
+            //We have confirmed that we have a list of SOMETHING, now let's add them one at a time.
+            const picojson::array& items_to_add = key_pair->second.get<picojson::array>();
+            for (picojson::array::const_iterator item_pair = items_to_add.begin();
+                 item_pair != items_to_add.end(); ++item_pair) {
+                // Before adding, make sure this element is in the right format,
+                // namely ["TAG_NAME", frequency number]
+                if( !(item_pair->is<picojson::array>()) ) {
+                    debugmsg("Invalid item list for group definition '%s', element is not an array.",
+                             group_id.c_str());
+                    continue;
                 }
+                if( item_pair->get<picojson::array>().size() != 2 ) {
+                    debugmsg( "Invalid item list for group definition '%s', element does not have 2 values.",
+                              group_id.c_str() );
+                    continue;
+                }
+                picojson::array item_frequency_array = item_pair->get<picojson::array>();
+                // Insure that the first value is a string, and the second is a number
+                if( !item_frequency_array[0].is<std::string>() ||
+                    !item_frequency_array[1].is<double>() ) {
+                    debugmsg("Invalid item list for group definition '%s', element is not a valid tag/frequency pair.",
+                             group_id.c_str());
+                    continue;
+                }
+                if( m_missing_item == find_template( item_frequency_array[0].get<std::string>() ) &&
+                    0 == g->itypes.count( item_frequency_array[0].get<std::string>() ) ) {
+                    debugmsg( "Item '%s' listed in group '%s' does not exist.",
+                              item_frequency_array[0].get<std::string>().c_str(), group_id.c_str() );
+                    continue;
+                }
+                current_group->add_entry(item_frequency_array[0].get<std::string>(),
+                                         (int)item_frequency_array[1].get<double>());
             }
         }
 
@@ -653,29 +671,40 @@ void Item_factory::load_item_groups_from(const std::string file_name){
         key_pair = entry_body.find("groups");
         if(key_pair != entry_body.end()){
             if( !(key_pair->second.is<picojson::array>()) ){
-                std::cerr << "Invalid group list for group definition '"+group_id+"', list of items not an array." << std::endl;
-            } else {
-                //We have confirmed that we have a list of SOMETHING, now let's add them one at a time.
-                const picojson::array& items_to_add = key_pair->second.get<picojson::array>();
-                for (picojson::array::const_iterator item_pair = items_to_add.begin(); item_pair != items_to_add.end(); ++item_pair) {
-                    //Before adding, make sure this element is in the right format, namely ["TAG_NAME", frequency number]
-                    if(!(item_pair->is<picojson::array>())){
-                        std::cerr << "Invalid group list for group definition '"+group_id+"', element is not an array." << std::endl;
-                    } else if(item_pair->get<picojson::array>().size()!=2){
-                        std::cerr << "Invalid group list for group definition '"+group_id+"', element does not have 2 values." << std::endl;
-                    } else {
-                        picojson::array item_frequency_array = item_pair->get<picojson::array>();
-                        //Finally, insure that the first value is a string, and the second is a number
-                        if(!item_frequency_array[0].is<std::string>() || !item_frequency_array[1].is<double>() ){
-                            std::cerr << "Invalid group list for group definition '"+group_id+"', element is not a valid tag/frequency pair." << std::endl;
-                        } else {
-                            Item_group* subgroup = m_template_groups.find(item_frequency_array[0].get<std::string>())->second;
-                            current_group.add_group(subgroup, (int)item_frequency_array[1].get<double>());
-                        }
-                    }
+                debugmsg("Invalid group list for group definition '%s', list of items not an array.",
+                         group_id.c_str());
+                continue;
+            }
+            //We have confirmed that we have a list of SOMETHING, now let's add them one at a time.
+            const picojson::array& items_to_add = key_pair->second.get<picojson::array>();
+            for ( picojson::array::const_iterator item_pair = items_to_add.begin();
+                  item_pair != items_to_add.end(); ++item_pair ) {
+                //Before adding, make sure this element is in the right format, namely ["TAG_NAME", frequency number]
+                if( !(item_pair->is<picojson::array>()) ) {
+                    debugmsg("Invalid group list for group definition '%s', element is not an array.",
+                             group_id.c_str());
+                    continue;
                 }
+                if( item_pair->get<picojson::array>().size() != 2 ) {
+                    debugmsg("Invalid group list for group definition '%s', element does not have 2 values.",
+                             group_id.c_str());
+                    continue;
+                }
+                picojson::array item_frequency_array = item_pair->get<picojson::array>();
+                //Finally, insure that the first value is a string, and the second is a number
+                if(!item_frequency_array[0].is<std::string>() ||
+                   !item_frequency_array[1].is<double>() ){
+                    debugmsg("Invalid group list for group definition '%s', element is not a valid tag/frequency pair.",
+                             group_id.c_str());
+                    continue;
+                }
+                Item_group* subgroup = m_template_groups.find(item_frequency_array[0].get<std::string>())->second;
+                current_group->add_group( subgroup, (int)item_frequency_array[1].get<double>() );
             }
         }
+    }
+    if( !json_good() ) {
+        throw "There was an error reading " + file_name;
     }
 }
 
@@ -717,75 +746,6 @@ nc_color Item_factory::color_from_string(std::string new_color){
     }
 }
 
-ammotype Item_factory::ammo_from_string(std::string new_ammo){
-    if("nail"==new_ammo){
-        return AT_NAIL;
-    } else if ("BB" == new_ammo) {
-        return AT_BB;
-    } else if ("pebble" == new_ammo) {
-        return AT_PEBBLE;
-    } else if ("bolt" == new_ammo) {
-        return AT_BOLT;
-    } else if ("arrow" == new_ammo) {
-        return AT_ARROW;
-    } else if ("shot" == new_ammo) {
-        return AT_SHOT;
-    } else if (".22" == new_ammo) {
-        return AT_22;
-    } else if ("9mm" == new_ammo) {
-        return AT_9MM;
-    } else if ("7.62x25mm" == new_ammo) {
-        return AT_762x25;
-    } else if (".38" == new_ammo) {
-        return AT_38;
-    } else if (".40" == new_ammo) {
-        return AT_40;
-    } else if (".44" == new_ammo) {
-        return AT_44;
-    } else if (".45" == new_ammo) {
-        return AT_45;
-    } else if ("5.7mm" == new_ammo) {
-        return AT_57;
-    } else if ("4.6mm" == new_ammo) {
-        return AT_46;
-    } else if ("7.62x39mm" == new_ammo) {
-        return AT_762;
-    } else if (".223" == new_ammo) {
-        return AT_223;
-    } else if (".30-06" == new_ammo) {
-        return AT_3006;
-    } else if (".308" == new_ammo) {
-        return AT_308;
-    } else if ("40mm" == new_ammo) {
-        return AT_40MM;
-    } else if ("66mm" == new_ammo) {
-        return AT_66MM;
-    } else if ("gasoline" == new_ammo) {
-        return AT_GAS;
-    } else if ("thread" == new_ammo) {
-        return AT_THREAD;
-    } else if ("battery" == new_ammo) {
-        return AT_BATT;
-    } else if ("plutonium" == new_ammo) {
-        return AT_PLUT;
-    } else if ("muscle" == new_ammo) {
-        return AT_MUSCLE;
-    } else if ("fusion" == new_ammo) {
-        return AT_FUSION;
-    } else if ("12mm" == new_ammo) {
-        return AT_12MM;
-    } else if ("plasma" == new_ammo) {
-        return AT_PLASMA;
-    } else if ("water" == new_ammo) {
-        return AT_WATER;
-    } else if ("none" == new_ammo) {
-        return AT_NULL; // NX17 and other special weapons
-    } else {
-        debugmsg("Read invalid ammo %s.", new_ammo.c_str());
-        return AT_NULL;
-    }
-}
-
 Use_function Item_factory::use_from_string(std::string function_name){
     std::map<Item_tag, Use_function>::iterator found_function = iuse_function_list.find(function_name);
 
@@ -801,14 +761,9 @@ Use_function Item_factory::use_from_string(std::string function_name){
 
 void Item_factory::set_flag_by_string(unsigned& cur_flags, std::string new_flag, std::string flag_type)
 {
-    //Use the standard item flag list unless a valid alternative is provided
-    std::map<Item_tag, unsigned> flag_map = item_flags_list;
-    if(flag_type=="ammo"){
-      flag_map = ammo_flags_list;
-    } else if(flag_type=="techniques"){
+    std::map<Item_tag, unsigned> flag_map;
+    if(flag_type=="techniques"){
       flag_map = techniques_list;
-    } else if(flag_type=="ammo_effects"){
-        flag_map = ammo_effects_list;
     } else if(flag_type=="bodyparts"){
         flag_map = bodyparts_list;
     }
@@ -826,6 +781,22 @@ void Item_factory::set_bitmask_by_string(std::map<Item_tag, unsigned> flag_map, 
     else
     {
         debugmsg("Invalid item flag (etc.): %s", new_flag.c_str());
+    }
+}
+
+void Item_factory::tags_from_json(catajson tag_list, std::set<std::string> &tags)
+{
+    if (tag_list.is_array())
+    {
+        for (tag_list.set_begin(); tag_list.has_curr(); tag_list.next())
+        {
+            tags.insert( tag_list.curr().as_string() );
+        }
+    }
+    else
+    {
+        //we should have gotten a string, if not an array, and catajson will do error checking
+        tags.insert( tag_list.as_string() );
     }
 }
 
@@ -872,7 +843,7 @@ bool Item_factory::is_mod_target(catajson targets, std::string weapon){
 
 void Item_factory::set_material_from_json(Item_tag new_id, catajson mat_list){
     //If the value isn't found, just return a group of null materials
-    material material_list[2] = {MNULL, MNULL};
+    std::string material_list[2] = {"null", "null"};
 
     if (mat_list.is_array())
     {
@@ -880,12 +851,12 @@ void Item_factory::set_material_from_json(Item_tag new_id, catajson mat_list){
         {
             debugmsg("Too many materials provided for item %s", new_id.c_str());
         }
-        material_list[0] = material_from_tag(new_id, mat_list.get(0).as_string());
-        material_list[1] = material_from_tag(new_id, mat_list.get(1).as_string());
+        material_list[0] = mat_list.get(0).as_string();
+        material_list[1] = mat_list.get(1).as_string();
     }
     else
     {
-        material_list[0] = material_from_tag(new_id, mat_list.as_string());
+        material_list[0] = mat_list.as_string();
     }
 
     itype* temp = find_template(new_id);
@@ -907,50 +878,3 @@ phase_id Item_factory::phase_from_tag(Item_tag name){
         return PNULL;
     }
 };
-
-material Item_factory::material_from_tag(Item_tag new_id, Item_tag name){
-    // Map the valid input tags to a valid material
-
-    // This should clearly be some sort of map, stored somewhere
-    // ...unless it can get replaced entirely, which would be nice.
-    // For now, though, that isn't the problem I'm solving.
-    if(name == "VEGGY"){
-        return VEGGY;
-    } else if(name == "FLESH"){
-        return FLESH;
-    } else if(name == "POWDER"){
-        return POWDER;
-    } else if(name == "HFLESH"){
-        return HFLESH;
-    } else if(name == "COTTON"){
-        return COTTON;
-    } else if(name == "WOOL"){
-        return WOOL;
-    } else if(name == "LEATHER"){
-        return LEATHER;
-    } else if(name == "KEVLAR"){
-        return KEVLAR;
-    } else if(name == "FUR"){
-        return FUR;
-    } else if(name == "STONE"){
-        return STONE;
-    } else if(name == "PAPER"){
-        return PAPER;
-    } else if(name == "WOOD"){
-        return WOOD;
-    } else if(name == "PLASTIC"){
-        return PLASTIC;
-    } else if(name == "GLASS"){
-        return GLASS;
-    } else if(name == "IRON"){
-        return IRON;
-    } else if(name == "STEEL"){
-        return STEEL;
-    } else if(name == "SILVER"){
-        return SILVER;
-    } else if(name == "NULL"){
-        return MNULL;
-    } else {
-        return MNULL;
-    }
-}

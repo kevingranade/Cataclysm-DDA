@@ -13,13 +13,64 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-Os" />
+					<Add option="-O2" />
+				</Compiler>
+			</Target>
+			<Target title="Release - Localized">
+				<Option output="Cataclysm" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Os" />
+					<Add option="-O2" />
+					<Add option="-DLOCALIZE" />
 				</Compiler>
 				<Linker>
-					<Add option="-Wl,-stack,12000000,-subsystem,windows" />
-					<Add option="-static -lgdi32" />
+					<Add library="intl" />
+					<Add library="iconv" />
+				</Linker>
+			</Target>
+			<Target title="Debug">
+				<Option output="Cataclysm" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
+				</Compiler>
+				<Linker>
+					<Add option="-pg -lgmon" />
+				</Linker>
+			</Target>
+			<Target title="Debug - Localized">
+				<Option output="Cataclysm" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="0" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
+					<Add option="-DLOCALIZE" />
+				</Compiler>
+				<Linker>
+					<Add option="-pg -lgmon" />
+					<Add library="intl" />
+					<Add library="iconv" />
 				</Linker>
 			</Target>
 		</Build>
+		<Linker>
+			<Add option="-Wl,-stack,12000000,-subsystem,windows" />
+			<Add option="-static" />
+			<Add library="gdi32" />
+			<Add library="winmm" />
+		</Linker>
 		<Unit filename="action.cpp" />
 		<Unit filename="action.h" />
 		<Unit filename="addiction.cpp" />
@@ -27,15 +78,19 @@
 		<Unit filename="artifact.cpp" />
 		<Unit filename="artifact.h" />
 		<Unit filename="artifactdata.h" />
+		<Unit filename="auto_pickup.cpp" />
+		<Unit filename="auto_pickup.h" />
 		<Unit filename="basecamp.cpp" />
 		<Unit filename="basecamp.h" />
 		<Unit filename="bionics.cpp" />
 		<Unit filename="bionics.h" />
 		<Unit filename="bodypart.cpp" />
 		<Unit filename="bodypart.h" />
+		<Unit filename="building_generation.cpp" />
+		<Unit filename="building_generation.h" />
 		<Unit filename="calendar.cpp" />
 		<Unit filename="calendar.h" />
-		<Unit filename="catacurse.cpp" />
+		<Unit filename="catacharset.cpp" />
 		<Unit filename="catacurse.h" />
 		<Unit filename="catajson.cpp" />
 		<Unit filename="catajson.h" />
@@ -48,6 +103,7 @@
 		<Unit filename="crafting.cpp" />
 		<Unit filename="crafting.h" />
 		<Unit filename="cursesdef.h" />
+		<Unit filename="cursesport.cpp" />
 		<Unit filename="debug.cpp" />
 		<Unit filename="debug.h" />
 		<Unit filename="defense.cpp" />
@@ -57,7 +113,6 @@
 		<Unit filename="enums.h" />
 		<Unit filename="event.cpp" />
 		<Unit filename="event.h" />
-		<Unit filename="facdata.h" />
 		<Unit filename="faction.cpp" />
 		<Unit filename="faction.h" />
 		<Unit filename="field.cpp" />
@@ -65,6 +120,7 @@
 		<Unit filename="game.h" />
 		<Unit filename="gamemode.cpp" />
 		<Unit filename="gamemode.h" />
+		<Unit filename="get_version.h" />
 		<Unit filename="graffiti.cpp" />
 		<Unit filename="graffiti.h" />
 		<Unit filename="help.cpp" />
@@ -105,7 +161,8 @@
 		<Unit filename="mapgenformat.cpp" />
 		<Unit filename="mapgenformat.h" />
 		<Unit filename="mapitems.h" />
-		<Unit filename="mapitemsdef.cpp" />
+		<Unit filename="material.cpp" />
+		<Unit filename="material.h" />
 		<Unit filename="melee.cpp" />
 		<Unit filename="mission.cpp" />
 		<Unit filename="mission.h" />
@@ -145,6 +202,8 @@
 		<Unit filename="output.h" />
 		<Unit filename="overmap.cpp" />
 		<Unit filename="overmap.h" />
+		<Unit filename="overmapbuffer.cpp" />
+		<Unit filename="overmapbuffer.h" />
 		<Unit filename="picojson.h" />
 		<Unit filename="player.cpp" />
 		<Unit filename="player.h" />
@@ -159,6 +218,7 @@
 		</Unit>
 		<Unit filename="rng.cpp" />
 		<Unit filename="rng.h" />
+		<Unit filename="sdlcurse.cpp" />
 		<Unit filename="settlement.cpp" />
 		<Unit filename="settlement.h" />
 		<Unit filename="setvector.cpp" />
@@ -169,11 +229,14 @@
 		<Unit filename="text_snippets.h" />
 		<Unit filename="tileray.cpp" />
 		<Unit filename="tileray.h" />
+		<Unit filename="translations.h" />
 		<Unit filename="trap.h" />
 		<Unit filename="trapdef.cpp" />
 		<Unit filename="trapfunc.cpp" />
 		<Unit filename="tutorial.cpp" />
 		<Unit filename="tutorial.h" />
+		<Unit filename="ui.cpp" />
+		<Unit filename="ui.h" />
 		<Unit filename="veh_interact.cpp" />
 		<Unit filename="veh_interact.h" />
 		<Unit filename="veh_type.h" />
@@ -185,6 +248,7 @@
 		<Unit filename="weather.cpp" />
 		<Unit filename="weather.h" />
 		<Unit filename="weather_data.cpp" />
+		<Unit filename="wincurse.cpp" />
 		<Unit filename="wish.cpp" />
 		<Extensions>
 			<code_completion />

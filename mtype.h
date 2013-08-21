@@ -8,6 +8,7 @@
 #include <math.h>
 #include "mondeath.h"
 #include "monattack.h"
+#include "material.h"
 #include "enums.h"
 #include "color.h"
 
@@ -39,6 +40,8 @@ mon_ant_larva, mon_ant, mon_ant_soldier, mon_ant_queen, mon_ant_fungus,
 mon_fly, mon_bee, mon_wasp,
 // Worms
 mon_graboid, mon_worm, mon_halfworm,
+// Wild Mutants
+mon_sludge_crawler,
 // Zombies
  mon_zombie, mon_zombie_cop, mon_zombie_shrieker, mon_zombie_spitter, mon_zombie_electric,
  mon_zombie_smoker,
@@ -46,6 +49,8 @@ mon_graboid, mon_worm, mon_halfworm,
  mon_boomer, mon_boomer_fungus, mon_skeleton, mon_zombie_necro,
  mon_zombie_scientist, mon_zombie_soldier, mon_zombie_grabber,
  mon_zombie_master,  mon_beekeeper, mon_zombie_child,
+// Flesh Golem
+ mon_jabberwock,
 // Triffids
 mon_triffid, mon_triffid_young, mon_triffid_queen, mon_creeper_hub,
  mon_creeper_vine, mon_biollante, mon_vinebeast, mon_triffid_heart,
@@ -73,6 +78,8 @@ mon_human_snail, mon_twisted_body, mon_vortex,
 mon_flying_polyp, mon_hunting_horror, mon_mi_go, mon_yugg, mon_gelatin,
  mon_flaming_eye, mon_kreck, mon_gracke, mon_blank, mon_gozu, mon_shadow, mon_breather_hub,
  mon_breather, mon_shadow_snake,
+// Cult, lobotomized creatures that are human/undead hybrids
+mon_dementia, mon_homunculus, mon_blood_sacrifice, mon_flesh_angel,
 // Robots
 mon_eyebot, mon_manhack, mon_skitterbot, mon_secubot, mon_hazmatbot, mon_copbot, mon_molebot,
  mon_tripod, mon_chickenbot, mon_tankbot, mon_turret, mon_exploder,
@@ -116,7 +123,7 @@ std::vector<monster_trigger> default_fears(monster_species spec);
 // And comment them well. ;)
 // mfb(n) converts a flag to its appropriate position in mtype's bitfield
 #ifndef mfb
-#define mfb(n) long(1 << (n))
+#define mfb(n) static_cast <unsigned long> (1 << (n))
 #endif
 enum m_flag {
 MF_NULL = 0,	// Helps with setvector
@@ -153,11 +160,14 @@ MF_SUNDEATH,	// Dies in full sunlight
 MF_ELECTRIC,	// Shocks unarmed attackers
 MF_ACIDPROOF,	// Immune to acid
 MF_ACIDTRAIL,	// Leaves a trail of acid
+MF_SLUDGEPROOF, // Ignores the effect of sludge trails
+MF_SLUDGETRAIL, // Causes monster to leave a sludge trap trail when moving
 MF_FIREY,	// Burns stuff and is immune to fire
 MF_QUEEN,	// When it dies, local populations start to die off too
 MF_ELECTRONIC,	// e.g. a robot; affected by emp blasts, and other stuff
-MF_FUR,		// May produce fur when butchered.
+MF_FUR,		// May produce fur when butchered
 MF_LEATHER,	// May produce leather when butchered
+MF_FEATHER, // May produce feather when butchered
 MF_CBM, // May produce a cbm or two when butchered
 MF_BONES, // May produce bones and sinews when butchered
 MF_IMMOBILE,	// Doesn't move (e.g. turrets)
@@ -166,6 +176,8 @@ MF_HIT_AND_RUN,	// Flee for several turns after a melee attack
 MF_GUILT,	// You feel guilty for killing it
 MF_HUMAN,	// It's a live human
 MF_NO_BREATHE, //Provides immunity to inhalation effects from gas, smoke, and poison
+MF_REGENERATES_50, // Monster regenerates very quickly over time
+MF_FLAMMABLE, // Monster catches fire, burns, and passes the fire on to nearby objects
 MF_MAX		// Sets the length of the flags - obviously MUST be last
 };
 
@@ -185,7 +197,7 @@ struct mtype {
  nc_color color;// Color of symbol (see color.h)
 
  m_size size;
- material mat;	// See enums.h for material list.  Generally, flesh; veggy?
+ std::string mat;	// See materials.json for material list.  Generally, flesh; veggy?
  phase_id phase;
  std::vector<m_flag> flags;
  std::vector<m_category> categories;
@@ -214,37 +226,10 @@ struct mtype {
 
 
  // Default constructor
- mtype () {
-  id = 0;
-  name = "human";
-  description = "";
-  species = species_none;
-  sym = ' ';
-  color = c_white;
-  size = MS_MEDIUM;
-  mat = FLESH;
-  phase = SOLID;
-  difficulty = 0;
-  agro = 0;
-  morale = 0;
-  speed = 0;
-  melee_skill = 0;
-  melee_dice = 0;
-  melee_sides = 0;
-  melee_cut = 0;
-  sk_dodge = 0;
-  armor_bash = 0;
-  armor_cut = 0;
-  hp = 0;
-  sp_freq = 0;
-  item_chance = 0;
-  dies = NULL;
-  sp_attack = NULL;
-  flags.push_back(MF_HUMAN);
- }
+ mtype ();
  // Non-default (messy)
  mtype (int pid, std::string pname, monster_species pspecies, char psym,
-        nc_color pcolor, m_size psize, material pmat,
+        nc_color pcolor, m_size psize, std::string pmat,
 	    unsigned int pdiff, signed char pagro,
         signed char pmorale, unsigned int pspeed, unsigned char pml_skill,
         unsigned char pml_dice, unsigned char pml_sides, unsigned char pml_cut,
@@ -253,53 +238,10 @@ struct mtype {
         unsigned char psp_freq,
         void (mdeath::*pdies)      (game *, monster *),
         void (mattack::*psp_attack)(game *, monster *),
-        std::string pdescription ) {
-  id = pid;
-  name = pname;
-  species = pspecies;
-  sym = psym;
-  color = pcolor;
-  size = psize;
-  mat = pmat;
-  difficulty = pdiff;
-  agro = pagro;
-  morale = pmorale;
-  speed = pspeed;
-  melee_skill = pml_skill;
-  melee_dice = pml_dice;
-  melee_sides = pml_sides;
-  melee_cut = pml_cut;
-  sk_dodge = pdodge;
-  armor_bash = parmor_bash;
-  armor_cut = parmor_cut;
-  item_chance = pitem_chance;
-  hp = php;
-  sp_freq = psp_freq;
-  dies = pdies;
-  sp_attack = psp_attack;
-  description = pdescription;
+        std::string pdescription );
 
-  anger = default_anger(species);
-  fear = default_fears(species);
- }
-
- bool has_flag(m_flag flag)
- {
-  for (int i = 0; i < flags.size(); i++) {
-   if (flags[i] == flag)
-    return true;
-  }
-  return false;
- }
-
- bool in_category(m_category category)
- {
-  for (int i = 0; i < categories.size(); i++) {
-   if (categories[i] == category)
-    return true;
-  }
-  return false;
- }
+ bool has_flag(m_flag flag);
+ bool in_category(m_category category);
 };
 
 #endif

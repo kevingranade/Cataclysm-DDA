@@ -25,6 +25,7 @@ ME_DOCILE,		// Don't attack other monsters--for tame monster
 ME_HIT_BY_PLAYER,	// We shot or hit them
 ME_RUN,			// For hit-and-run monsters; we're running for a bit;
 ME_BOULDERING,  // Monster is moving over rubble
+ME_BOUNCED,
 NUM_MONSTER_EFFECTS
 };
 
@@ -65,7 +66,7 @@ class monster {
  bool has_flag(m_flag f);	// Returns true if f is set (see mtype.h)
  bool can_see();		// MF_SEES and no ME_BLIND
  bool can_hear();		// MF_HEARS and no ME_DEAF
- bool made_of(material m);	// Returns true if it's made of m
+ bool made_of(std::string m);	// Returns true if it's made of m
  bool made_of(phase_id p); // Returns true if its phase is p
 
  void load_info(std::string data, std::vector<mtype*> *mtypes);
@@ -77,12 +78,30 @@ class monster {
  void shift(int sx, int sy); 	// Shifts the monster to the appropriate submap
 			     	// Updates current pos AND our plans
  bool wander(); 		// Returns true if we have no plans
- bool can_move_to(game *g, int x, int y); // Can we move to (x, y)?
+
+ /**
+  * Checks whether we can move to/through (x, y).
+  *
+  * This is used in pathfinding and ONLY checks the terrain. It ignores players
+  * and monsters, which might only block this tile temporarily.
+  */
+ bool can_move_to(game *g, int x, int y);
+
  bool will_reach(game *g, int x, int y); // Do we have plans to get to (x, y)?
  int  turns_to_reach(game *g, int x, int y); // How long will it take?
 
  void set_dest(int x, int y, int &t); // Go in a straight line to (x, y)
 				      // t determines WHICH Bresenham line
+
+ /**
+  * Set (x, y) as wander destination.
+  *
+  * This will cause the monster to slowly move towards the destination,
+  * unless there is an overriding smell or plan.
+  *
+  * @param f The priority of the destination, as well as how long we should
+  *          wander towards there.
+  */
  void wander_to(int x, int y, int f); // Try to get to (x, y), we don't know
 				      // the route.  Give up after f steps.
  void plan(game *g);
@@ -91,9 +110,41 @@ class monster {
  void friendly_move(game *g);
 
  point scent_move(game *g);
- point sound_move(game *g);
+ point wander_next(game *g);
  void hit_player(game *g, player &p, bool can_grab = true);
- void move_to(game *g, int x, int y);
+ int calc_movecost(game *g, int x1, int y1, int x2, int y2);
+
+ /**
+  * Attempt to move to (x,y).
+  *
+  * If there's something blocking the movement, such as infinite move
+  * costs at the target, an existing NPC or monster, this function simply
+  * aborts and does nothing.
+  *
+  * @param force If this is set to true, the movement will happen even if
+  *              there's currently something blocking the destination.
+  *
+  * @return 1 if movement successful, 0 otherwise
+  */
+ int move_to(game *g, int x, int y, bool force=false);
+
+ /**
+  * Attack any enemies at the given location.
+  *
+  * Attacks only if there is a creature at the given location towards
+  * we are hostile.
+  *
+  * @return 1 if something was attacked, 0 otherwise
+  */
+ int attack_at(int x, int y);
+
+ /**
+  * Try to smash/bash/destroy your way through the terrain at (x, y).
+  *
+  * @return 1 if we destroyed something, 0 otherwise.
+  */
+ int bash_at(int x, int y);
+
  void stumble(game *g, bool moved);
  void knock_back_from(game *g, int posx, int posy);
 
@@ -106,13 +157,16 @@ class monster {
  int trigger_sum(game *g, std::vector<monster_trigger> *triggers);
  int  hit(game *g, player &p, body_part &bp_hit); // Returns a damage
  void hit_monster(game *g, int i);
- bool hurt(int dam); 	// Deals this dam damage; returns true if we dead
+ // Deals this dam damage; returns true if we dead
+ // If real_dam is provided, caps overkill at real_dam.
+ bool hurt(int dam, int real_dam = 0);
  int  armor_cut();	// Natural armor, plus any worn armor
  int  armor_bash();	// Natural armor, plus any worn armor
  int  dodge();		// Natural dodge, or 0 if we're occupied
  int  dodge_roll();	// For the purposes of comparing to player::hit_roll()
  int  fall_damage();	// How much a fall hurts us
  void die(game *g);
+ void drop_items_on_death(game *g);
 
 // Other
  void add_effect(monster_effect_type effect, int duration);
@@ -143,6 +197,7 @@ class monster {
  int faction_id; // If we belong to a faction
  int mission_id; // If we're related to a mission
  mtype *type;
+ bool no_extra_death_drops; // if true, don't spawn loot items as part of death
  bool dead;
  bool made_footstep;
  std::string unique_name; // If we're unique

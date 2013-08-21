@@ -68,6 +68,17 @@ struct map_layer {
  map_layer() : terrain(), visible(), notes() {}
 };
 
+struct node
+{
+ int x;
+ int y;
+ int d;
+ int p;
+
+ node(int xp, int yp, int dir, int pri) {x = xp; y = yp; d = dir; p = pri;}
+ bool operator< (const node &n) const { return this->p > n.p; }
+};
+
 class overmap
 {
  public:
@@ -104,7 +115,7 @@ class overmap
   point random_house_in_city(int city_id);
   int dist_from_city(point p);
 // Interactive point choosing; used as the map screen
-  point draw_overmap(game *g, int const z);
+  point draw_overmap(game *g, int z);
 
   bool ter_in_type_range(int x, int y, int z, oter_id type, int type_range);
   oter_id& ter(int x, int y, int z);
@@ -151,7 +162,7 @@ class overmap
 
   //Drawing
   void draw(WINDOW *w, game *g, int z, int &cursx, int &cursy,
-            int &origx, int &origy, char &ch, bool blink,
+            int &origx, int &origy, signed char &ch, bool blink,
             overmap &hori, overmap &vert, overmap &diag);
   // Overall terrain
   void place_river(point pa, point pb);

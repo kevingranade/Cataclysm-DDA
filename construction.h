@@ -7,12 +7,17 @@ struct construct;
 struct construction_stage
 {
  ter_id terrain;
+ furn_id furniture;
  int time; // In minutes, i.e. 10 turns
  std::vector<component> tools[10];
  std::vector<component> components[10];
 
  construction_stage(ter_id Terrain, int Time) :
-    terrain (Terrain), time (Time) { };
+    terrain (Terrain), furniture(f_null), time (Time) { };
+ construction_stage(furn_id Furniture, int Time) :
+    terrain (t_null), furniture (Furniture), time (Time) { };
+ construction_stage(int Time) :
+    terrain (t_null), furniture (f_null), time (Time) { };
 };
 
 struct constructable
@@ -20,14 +25,16 @@ struct constructable
  int id;
  std::string name; // Name as displayed
  int difficulty; // Carpentry skill level required
+ bool loopstages;
  std::vector<construction_stage> stages;
  bool (construct::*able)  (game *, point);
  void (construct::*done)  (game *, point);
 
  constructable(int Id, std::string Name, int Diff,
                bool (construct::*Able) (game *, point),
-               void (construct::*Done) (game *, point)) :
-  id (Id), name (Name), difficulty (Diff), able (Able), done (Done) {};
+               void (construct::*Done) (game *, point),
+               bool LoopStages = false) :
+    id (Id), name (Name), difficulty (Diff), loopstages (LoopStages), able (Able), done (Done) {};
 };
 
 struct construct // Construction functions.
@@ -49,7 +56,6 @@ struct construct // Construction functions.
 
  bool able_wall  (game *, point); // Able if tile is wall
  bool able_wall_wood(game *g, point); // Only player-built walls
- bool able_indoors(game *g, point); // Able on floors
 
  bool able_between_walls(game *, point); // Flood-fill contained by walls
 
@@ -58,9 +64,9 @@ struct construct // Construction functions.
  bool able_pit(game *, point); // Able only on pits
 
  bool able_tree(game *, point); // Able on trees
- bool able_log(game *, point); // Able on logs
+ bool able_trunk(game *, point); // Able on tree trunks
 
- bool able_furniture(game *, point); // Able on furniture
+ bool able_move(game *, point); // Able on furniture
 
  bool able_deconstruct(game *, point);
 
@@ -69,8 +75,9 @@ struct construct // Construction functions.
  void done_window_pane(game *, point);
  void done_vehicle(game *, point);
  void done_tree(game *, point);
- void done_log(game *, point);
- void done_furniture(game *, point);
+ void done_trunk_log(game *, point);
+ void done_trunk_plank(game *, point);
+ void done_move(game *, point);
  void done_tape(game *, point);
  void done_deconstruct(game *, point);
 

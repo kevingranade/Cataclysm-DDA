@@ -1,4 +1,5 @@
 #include "line.h"
+#include "game.h"
 #include <stdlib.h>
 
 #define SGN(a) (((a)<0) ? -1 : 1)
@@ -6,6 +7,8 @@
 std::vector <point> line_to(int x1, int y1, int x2, int y2, int t)
 {
  std::vector<point> ret;
+ // Preallocate the number of cells we need instead of allocating them piecewise.
+ ret.reserve( square_dist( x1, y1, x2, y2 ) );
  int dx = x2 - x1;
  int dy = y2 - y1;
  int ax = abs(dx)<<1;
@@ -61,23 +64,25 @@ std::vector <point> line_to(int x1, int y1, int x2, int y2, int t)
 
 int trig_dist(int x1, int y1, int x2, int y2)
 {
- return int(sqrt(double(pow(x1 - x2, 2.0) + pow(y1 - y2, 2.0))));
+   return int( sqrt( double( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) ) ) );
+}
+
+int square_dist(int x1, int y1, int x2, int y2) {
+   int dx = abs(x1 - x2), dy = abs(y1 - y2);
+   return ( dx > dy ? dx : dy );
 }
 
 int rl_dist(int x1, int y1, int x2, int y2)
 {
- int dx = abs(x1 - x2), dy = abs(y1 - y2);
- if (dx > dy)
-  return dx;
- return dy;
+ if(trigdist) {
+     return trig_dist( x1, y1, x2, y2 );
+ }
+ return square_dist( x1, y1, x2, y2 );
 }
 
 int rl_dist(point a, point b)
 {
- int dx = abs(a.x - b.x), dy = abs(a.y - b.y);
- if (dx > dy)
-  return dx;
- return dy;
+ return rl_dist(a.x, a.y, b.x, b.y);
 }
 
 double slope_of(std::vector<point> line)
@@ -165,7 +170,7 @@ std::string direction_name_short(direction dir)
   case NORTHEAST: return "NE";
   case EAST:      return "E ";
   case SOUTHEAST: return "SE";
-  case SOUTH:     return "W ";
+  case SOUTH:     return "S ";
   case SOUTHWEST: return "SW";
   case WEST:      return "W ";
   case NORTHWEST: return "NW";

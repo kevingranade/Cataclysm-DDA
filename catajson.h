@@ -2,12 +2,13 @@
 #define _CATAJSON_H_
 
 #include "picojson.h"
+#include <set>
 
 class catajson
 {
 public:
     catajson();
-    catajson(std::string path);
+    catajson(std::string path, bool is_static = false);
     catajson(picojson::value val, std::string path_msg);
 
     // accessors for picojson values containing simple types
@@ -16,6 +17,8 @@ public:
     int as_int() const;
     bool as_bool() const;
     double as_double() const;
+    // accessor for not-so-simple type
+    std::set<std::string> as_tags();
     // accessors in the case of array or object values
     catajson get(std::string key) const;
     catajson get(int index) const;
@@ -46,5 +49,7 @@ private:
     picojson::object::const_iterator obj_iter;
     std::string path_msg; // used for error messages
 };
+
+#define json_good() picojson::get_last_error().empty()
 
 #endif

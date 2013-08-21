@@ -356,12 +356,14 @@ struct npc_chatbin
  std::vector<int> missions_assigned;
  int mission_selected;
  int tempvalue; //No clue what this value does, but it is used all over the place. So it is NOT temp.
+ Skill* skill;
  talk_topic first_topic;
 
  npc_chatbin()
  {
   mission_selected = -1;
   tempvalue = -1;
+  skill = NULL;
   first_topic = TALK_NONE;
  }
 
@@ -369,7 +371,7 @@ struct npc_chatbin
  {
   std::stringstream ret;
   ret << first_topic << " " << mission_selected << " " << tempvalue << " " <<
-          missions.size() << " " << missions_assigned.size();
+          (skill ? skill->ident() : "none") << " " << missions.size() << " " << missions_assigned.size();
   for (int i = 0; i < missions.size(); i++)
    ret << " " << missions[i];
   for (int i = 0; i < missions_assigned.size(); i++)
@@ -380,9 +382,11 @@ struct npc_chatbin
  void load_info(std::stringstream &info)
  {
   int tmpsize_miss, tmpsize_assigned, tmptopic;
-  info >> tmptopic >> mission_selected >> tempvalue >> tmpsize_miss >>
-          tmpsize_assigned;
+  std::string skill_ident;
+  info >> tmptopic >> mission_selected >> tempvalue >> skill_ident >>
+          tmpsize_miss >> tmpsize_assigned;
   first_topic = talk_topic(tmptopic);
+  skill = skill_ident == "none" ? NULL : Skill::skill(skill_ident);
   for (int i = 0; i < tmpsize_miss; i++) {
    int tmpmiss;
    info >> tmpmiss;
@@ -413,7 +417,7 @@ public:
  void randomize_from_faction(game *g, faction *fac);
  void spawn_at(overmap *o, int posx, int posy, int omz);
  void place_near(game *g, int potentialX, int potentialY);
- skill best_skill();
+ Skill* best_skill();
  void starting_weapon(game *g);
 
 // Save & load
@@ -443,7 +447,7 @@ public:
  void make_angry(); // Called if the player attacks us
  bool wants_to_travel_with(player *p);
  int assigned_missions_value(game *g);
- std::vector<skill> skills_offered_to(player *p); // Skills that're higher
+ std::vector<Skill*> skills_offered_to(player *p); // Skills that're higher
  std::vector<itype_id> styles_offered_to(player *p); // Martial Arts
 // State checks
  bool is_enemy(); // We want to kill/mug/etc the player
@@ -475,7 +479,8 @@ public:
  void update_worst_item_value(); // Find the worst value in our inventory
  int  value(const item &it);
  bool wear_if_wanted(item it);
- virtual bool wield(game *g, char invlet);
+ virtual bool wield(game *g, signed char invlet, bool);
+ virtual bool wield(game *g, signed char invlet);
  bool has_healing_item();
  bool has_painkiller();
  bool took_painkiller();
@@ -511,7 +516,7 @@ public:
  npc_action address_player	(game *g);
  npc_action long_term_goal_action(game *g);
  bool alt_attack_available(game *g);	// Do we have grenades, molotov, etc?
- char  choose_escape_item(); // Returns index of our best escape aid
+ signed char  choose_escape_item(); // Returns index of our best escape aid
 
 // Helper functions for ranged combat
  int  confident_range(char invlet = 0); // >= 50% chance to hit
@@ -540,7 +545,7 @@ public:
  void melee_player	(game *g, player &foe);
  void wield_best_melee	(game *g);
  void alt_attack	(game *g, int target);
- void use_escape_item	(game *g, char invlet, int target);
+ void use_escape_item	(game *g, signed char invlet, int target);
  void heal_player	(game *g, player &patient);
  void heal_self		(game *g);
  void take_painkiller	(game *g);
@@ -590,6 +595,7 @@ public:
  npc_combat_rules combat_rules;
  bool marked_for_death; // If true, we die as soon as we respawn!
  bool dead;		// If true, we need to be cleaned up
+ bool hit_by_player;
  std::vector<npc_need> needs;
  unsigned flags : NF_MAX;
 private:
