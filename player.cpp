@@ -6076,31 +6076,31 @@ hint_rating player::rate_action_eat(item *it)
  return HINT_CANT;
 }
 
-bool player::eat(game *g, signed char ch)
+bool player::consume(game *g, signed char ch)
 {
+    item *to_eat = NULL;
     it_comest *comest = NULL;
-    item *eaten = NULL;
     int which = -3; // Helps us know how to delete the item which got eaten
-    if (ch == -2)
+
+    if(ch == -2)
     {
         g->add_msg(_("You do not have that item."));
         return false;
     }
-    else if (ch == -1)
+    else if (ch == -1) // Consume your current weapon
     {
         if (weapon.is_food_container(this))
         {
-            eaten = &weapon.contents[0];
+            to_eat = &weapon.contents[0];
             which = -2;
             if (weapon.contents[0].is_food())
                 comest = dynamic_cast<it_comest*>(weapon.contents[0].type);
         }
         else if (weapon.is_food(this))
         {
-            eaten = &weapon;
+            to_eat = &weapon;
             which = -1;
-            if (weapon.is_food())
-                comest = dynamic_cast<it_comest*>(weapon.type);
+            comest = dynamic_cast<it_comest*>(weapon.type);
         }
         else
         {
@@ -6110,22 +6110,21 @@ bool player::eat(game *g, signed char ch)
             return false;
         }
     }
-    else
+    else // Consume item from inventory
     {
         item& it = inv.item_by_letter(ch);
         if (it.is_food_container(this))
         {
-            eaten = &(it.contents[0]);
+            to_eat = &(it.contents[0]);
             which = 1;
             if (it.contents[0].is_food())
                 comest = dynamic_cast<it_comest*>(it.contents[0].type);
         }
         else if (it.is_food(this))
         {
-            eaten = &it;
+            to_eat = &it;
             which = 0;
-            if (it.is_food())
-                comest = dynamic_cast<it_comest*>(it.type);
+            comest = dynamic_cast<it_comest*>(it.type);
         }
         else
         {
@@ -6135,203 +6134,48 @@ bool player::eat(game *g, signed char ch)
             return false;
         }
     }
-    if (eaten == NULL)
+
+    if(to_eat == NULL) {
+        debugmsg("consume item is lost!");
         return false;
-
-    int to_eat = 1;
-
-    if (eaten->is_ammo())   // For when bionics let you eat fuel
-    {
-        const int factor = 20;
-        int max_change = max_power_level - power_level;
-        if (max_change == 0)
-            g->add_msg_if_player(this,_("Your internal power storage is fully powered."));
-        charge_power(eaten->charges / factor);
-        eaten->charges -= max_change * factor; //negative charges seem to be okay
-        eaten->charges++; //there's a flat subtraction later
     }
-    else if (!eaten->type->is_food() && !eaten->is_food_container(this))
+
+    bool was_consumed = false;
+    if (comest != NULL)
     {
-            // For when bionics let you burn organic materials
-        if (eaten->type->is_book()) {
-            it_book* book = dynamic_cast<it_book*>(eaten->type);
-            if (book->type != NULL && !query_yn(_("Really eat %s?"), book->name.c_str()))
-                return false;
-        }
-        int charge = (eaten->volume() + eaten->weight()) / 225;
-        if (eaten->type->m1 == "leather" || eaten->type->m2 == "leather")
-            charge /= 4;
-        if (eaten->type->m1 == "wood"    || eaten->type->m2 == "wood")
-            charge /= 2;
-        charge_power(charge);
-        g->add_msg_player_or_npc(this, _("You eat your %s."), _("<npcname> eats a %s."),
-                                 eaten->tname(g).c_str());
-    }
-    else     // It's real food!  i.e. an it_comest
-    {
-        // Remember, comest points to the it_comest data
-        if (comest == NULL)
+        if (comest->comesttype == "FOOD" || comest->comesttype == "DRINK")
         {
-            debugmsg("player::eat(%s); comest is NULL!", eaten->tname(g).c_str());
-            return false;
+            was_consumed = eat(g, to_eat, comest);
+            if (!was_consumed) return was_consumed;
         }
-        if (comest->tool != "null")
+        else if (comest->comesttype == "MED")
         {
-            bool has = has_amount(comest->tool, 1);
-            if (g->itypes[comest->tool]->count_by_charges())
-                has = has_charges(comest->tool, 1);
-            if (!has) {
-                g->add_msg_if_player(this,_("You need a %s to consume that!"),
-                           g->itypes[comest->tool]->name.c_str());
-                return false;
+            if (comest->tool != "null") // Check tools
+            {
+                bool has = has_amount(comest->tool, 1);
+                if (g->itypes[comest->tool]->count_by_charges())
+                    has = has_charges(comest->tool, 1);
+                if (!has) {
+                    g->add_msg_if_player(this,_("You need a %s to consume that!"),
+                                         g->itypes[comest->tool]->name.c_str());
+                    return false;
+                }
+                use_charges(comest->tool, 1); // Tools like lighters get used
             }
-        }
-        bool overeating = (!has_trait("GOURMAND") && hunger < 0 &&
-                           comest->nutr >= 5);
-        bool spoiled = eaten->rotten(g);
-
-        last_item = itype_id(eaten->type->id);
-
-        if (overeating && !is_npc() &&
-                !query_yn(_("You're full.  Force yourself to eat?")))
-            return false;
-
-        if (has_trait("CARNIVORE") && eaten->made_of("veggy") && comest->nutr > 0)
-        {
-            g->add_msg_if_player(this, _("You can't stand the thought of eating veggies."));
-            return false;
-        }
-        if (!has_trait("CANNIBAL") && eaten->made_of("hflesh")&& !is_npc() &&
-                !query_yn(_("The thought of eating that makes you feel sick. Really do it?")))
-            return false;
-
-        if (has_trait("VEGETARIAN") && eaten->made_of("flesh") && !is_npc() &&
-                !query_yn(_("Really eat that meat? Your stomach won't be happy.")))
-            return false;
-
-        if (spoiled) {
-            if (is_npc()) {
-                return false;
-            }
-            if (!has_trait("SAPROVORE") &&
-                !query_yn(_("This %s smells awful!  Eat it?"), eaten->tname(g).c_str())) {
-                return false;
-            }
-        }
-
-        if (comest->use != &iuse::none)
-        {
-            to_eat = comest->use.call(g, this, eaten, false);
-            if( to_eat == 0 ) {
-                return false;
-            }
-        }
-
-        if( spoiled ) {
-            g->add_msg(_("Ick, this %s doesn't taste so good..."),eaten->tname(g).c_str());
-            if (!has_trait("SAPROVORE") && (!has_bionic("bio_digestion") || one_in(3)))
-                add_disease("foodpoison", rng(60, (comest->nutr + 1) * 60));
-            hunger -= rng(0, comest->nutr);
-            thirst -= comest->quench;
-            if (!has_trait("SAPROVORE") && !has_bionic("bio_digestion"))
-                health -= 3;
-        } else {
-            hunger -= comest->nutr;
-            thirst -= comest->quench;
-
-            if (has_bionic("bio_digestion")) {
-                hunger -= rng(0, comest->nutr);
-            } else if (!has_trait("GOURMAND")) {
-                if ((overeating && rng(-200, 0) > hunger)) {
-                    vomit(g);
+            if (comest->use != &iuse::none) //Check special use
+            {
+                int was_used = comest->use.call(g, this, to_eat, false);
+                if( was_used == 0 ) {
+                    return false;
                 }
             }
+            hunger -= comest->nutr;
+            thirst -= comest->quench;
             health += comest->healthy;
-        }
-        // At this point, we've definitely eaten the item, so use up some turns.
-        if (has_trait("GOURMAND"))
-            moves -= 150;
-        else
             moves -= 250;
-        // If it's poisonous... poison us.  TODO: More several poison effects
-        if (eaten->poison >= rng(2, 4))
-            add_disease("poison", eaten->poison * 100);
-        if (eaten->poison > 0)
-            add_disease("foodpoison", eaten->poison * 300);
-
-        if (comest->comesttype == "DRINK" && !eaten->has_flag("USE_EAT_VERB")) {
-            g->add_msg_player_or_npc( this, _("You drink your %s."), _("<npcname> drinks a %s."),
-                                      eaten->tname(g).c_str());
-        }
-        else if (comest->comesttype == "FOOD" || eaten->has_flag("USE_EAT_VERB")) {
-            g->add_msg_player_or_npc( this, _("You eat your %s."), _("<npcname> eats a %s."),
-                                      eaten->tname(g).c_str());
-        }
-
-        if (g->itypes[comest->tool]->is_tool())
-            use_charges(comest->tool, 1); // Tools like lighters get used
-        if (comest->stim > 0)
-        {
-            if (comest->stim < 10 && stim < comest->stim)
-            {
-                stim += comest->stim;
-                if (stim > comest->stim)
-                    stim = comest->stim;
-            }
-            else if (comest->stim >= 10 && stim < comest->stim * 3)
-                stim += comest->stim;
-        }
-
-        add_addiction(comest->add, comest->addict);
-        if (addiction_craving(comest->add) != MORALE_NULL)
-            rem_morale(addiction_craving(comest->add));
-
-        if (has_bionic("bio_ethanol") && comest->use == &iuse::alcohol)
-            charge_power(rng(2, 8));
-        if (has_bionic("bio_ethanol") && comest->use == &iuse::alcohol_weak)
-            charge_power(rng(1, 4));
-
-        if (eaten->made_of("hflesh")) {
-          if (has_trait("CANNIBAL")) {
-              g->add_msg_if_player(this, _("You feast upon the human flesh."));
-              add_morale(MORALE_CANNIBAL, 15, 100);
-          } else {
-              g->add_msg_if_player(this, _("You feel horrible for eating a person.."));
-              add_morale(MORALE_CANNIBAL, -60, -400, 600, 300);
-          }
-        }
-        if (has_trait("VEGETARIAN") && (eaten->made_of("flesh") || eaten->made_of("hflesh")))
-        {
-            g->add_msg_if_player(this,_("Almost instantly you feel a familiar pain in your stomach"));
-            add_morale(MORALE_VEGETARIAN, -75, -400, 300, 240);
-        }
-        if ((has_trait("HERBIVORE") || has_trait("RUMINANT")) &&
-                eaten->made_of("flesh"))
-        {
-            if (!one_in(3))
-                vomit(g);
-            if (comest->quench >= 2)
-                thirst += int(comest->quench / 2);
-            if (comest->nutr >= 2)
-                hunger += int(comest->nutr * .75);
-        }
-        if (eaten->has_flag("HOT") && eaten->has_flag("EATEN_HOT"))
-            add_morale(MORALE_FOOD_HOT, 5, 10);
-        if (has_trait("GOURMAND"))
-        {
-            if (comest->fun < -2)
-                add_morale(MORALE_FOOD_BAD, comest->fun * 2, comest->fun * 4, 60, 30, false, comest);
-            else if (comest->fun > 0)
-                add_morale(MORALE_FOOD_GOOD, comest->fun * 3, comest->fun * 6, 60, 30, false, comest);
-            if (hunger < -60 || thirst < -60)
-                g->add_msg_if_player(this,_("You can't finish it all!"));
-            if (hunger < -60)
-                hunger = -60;
-            if (thirst < -60)
-                thirst = -60;
-        }
-        else
-        {
+            add_addiction(comest->add, comest->addict);
+            if (addiction_craving(comest->add) != MORALE_NULL)
+                rem_morale(addiction_craving(comest->add));
             if (comest->fun < 0)
                 add_morale(MORALE_FOOD_BAD, comest->fun * 2, comest->fun * 6, 60, 30, false, comest);
             else if (comest->fun > 0)
@@ -6342,11 +6186,52 @@ bool player::eat(game *g, signed char ch)
                 hunger = -20;
             if (thirst < -20)
                 thirst = -20;
+            was_consumed = true;
+        }
+        else
+        {
+            debugmsg("Unknown comestible type of item: %s\n", to_eat->tname(g).c_str());
         }
     }
+    else // Consume other type of items.
+    {
+        // For when bionics let you eat fuel
+        if (to_eat->is_ammo())
+        {
+            const int factor = 20;
+            int max_change = max_power_level - power_level;
+            if (max_change == 0)
+                g->add_msg_if_player(this,_("Your internal power storage is fully powered."));
+            charge_power(to_eat->charges / factor);
+            to_eat->charges -= max_change * factor; //negative charges seem to be okay
+            to_eat->charges++; //there's a flat subtraction later
+        }
+        else if (!to_eat->type->is_food() && !to_eat->is_food_container(this))
+        {
+            if (to_eat->type->is_book())
+            {
+                it_book* book = dynamic_cast<it_book*>(to_eat->type);
+                if (book->type != NULL && !query_yn(_("Really eat %s?"), book->name.c_str()))
+                    return false;
+            }
+            int charge = (to_eat->volume() + to_eat->weight()) / 225;
+            if (to_eat->type->m1 == "leather" || to_eat->type->m2 == "leather")
+                charge /= 4;
+            if (to_eat->type->m1 == "wood"    || to_eat->type->m2 == "wood")
+                charge /= 2;
+            charge_power(charge);
+            g->add_msg_player_or_npc(this, _("You eat your %s."), _("<npcname> eats a %s."),
+                                     to_eat->tname(g).c_str());
+        }
+        was_consumed = true;
+    }
 
-    eaten->charges -= to_eat;
-    if (eaten->charges <= 0 || eaten->is_book())
+    if (!was_consumed)
+        return false;
+
+    // Actions after consume
+    to_eat->charges--;
+    if (to_eat->charges <= 0)
     {
         if (which == -1)
             weapon = ret_null;
@@ -6393,6 +6278,185 @@ bool player::eat(game *g, signed char ch)
                 inv.restack(this);
             inv.unsort();
         }
+    }
+    return true;
+}
+
+bool player::eat(game *g, item *eaten, it_comest *comest)
+{
+    int to_eat = 1;
+    if (comest == NULL)
+    {
+        debugmsg("player::eat(%s); comest is NULL!", eaten->tname(g).c_str());
+        return false;
+    }
+    if (comest->tool != "null")
+    {
+        bool has = has_amount(comest->tool, 1);
+        if (g->itypes[comest->tool]->count_by_charges())
+            has = has_charges(comest->tool, 1);
+        if (!has) {
+            g->add_msg_if_player(this,_("You need a %s to consume that!"),
+                       g->itypes[comest->tool]->name.c_str());
+            return false;
+        }
+    }
+    bool overeating = (!has_trait("GOURMAND") && hunger < 0 &&
+                       comest->nutr >= 5);
+    bool spoiled = eaten->rotten(g);
+
+    last_item = itype_id(eaten->type->id);
+
+    if (overeating && !is_npc() &&
+            !query_yn(_("You're full.  Force yourself to eat?")))
+        return false;
+
+    if (has_trait("CARNIVORE") && eaten->made_of("veggy") && comest->nutr > 0)
+    {
+    g->add_msg_if_player(this, _("You can't stand the thought of eating veggies."));
+        return false;
+    }
+    if (!has_trait("CANNIBAL") && eaten->made_of("hflesh")&& !is_npc() &&
+            !query_yn(_("The thought of eating that makes you feel sick. Really do it?")))
+        return false;
+
+    if (has_trait("VEGETARIAN") && eaten->made_of("flesh") && !is_npc() &&
+            !query_yn(_("Really eat that meat? Your stomach won't be happy.")))
+        return false;
+
+    if (spoiled) {
+        if (is_npc()) {
+            return false;
+        }
+        if (!has_trait("SAPROVORE") &&
+            !query_yn(_("This %s smells awful!  Eat it?"), eaten->tname(g).c_str())) {
+            return false;
+        }
+    }
+
+    if (comest->use != &iuse::none)
+    {
+        to_eat = comest->use.call(g, this, eaten, false);
+        if( to_eat == 0 ) {
+            return false;
+        }
+    }
+
+    if( spoiled ) {
+        g->add_msg(_("Ick, this %s doesn't taste so good..."),eaten->tname(g).c_str());
+        if (!has_trait("SAPROVORE") && (!has_bionic("bio_digestion") || one_in(3)))
+            add_disease("foodpoison", rng(60, (comest->nutr + 1) * 60));
+        hunger -= rng(0, comest->nutr);
+        thirst -= comest->quench;
+        if (!has_trait("SAPROVORE") && !has_bionic("bio_digestion"))
+            health -= 3;
+    } else {
+        hunger -= comest->nutr;
+        thirst -= comest->quench;
+
+        if (has_bionic("bio_digestion")) {
+            hunger -= rng(0, comest->nutr);
+        } else if (!has_trait("GOURMAND")) {
+            if ((overeating && rng(-200, 0) > hunger)) {
+                vomit(g);
+            }
+        }
+        health += comest->healthy;
+    }
+    // At this point, we've definitely eaten the item, so use up some turns.
+    if (has_trait("GOURMAND"))
+        moves -= 150;
+    else
+        moves -= 250;
+    // If it's poisonous... poison us.  TODO: More several poison effects
+    if (eaten->poison >= rng(2, 4))
+        add_disease("poison", eaten->poison * 100);
+    if (eaten->poison > 0)
+        add_disease("foodpoison", eaten->poison * 300);
+
+    if (comest->comesttype == "DRINK" && !eaten->has_flag("USE_EAT_VERB")) {
+        g->add_msg_player_or_npc( this, _("You drink your %s."), _("<npcname> drinks a %s."),
+                                  eaten->tname(g).c_str());
+    }
+    else if (comest->comesttype == "FOOD" || eaten->has_flag("USE_EAT_VERB")) {
+        g->add_msg_player_or_npc( this, _("You eat your %s."), _("<npcname> eats a %s."),
+                                  eaten->tname(g).c_str());
+    }
+
+    if (g->itypes[comest->tool]->is_tool())
+        use_charges(comest->tool, 1); // Tools like lighters get used
+    if (comest->stim > 0)
+    {
+        if (comest->stim < 10 && stim < comest->stim)
+        {
+            stim += comest->stim;
+            if (stim > comest->stim)
+                stim = comest->stim;
+        }
+        else if (comest->stim >= 10 && stim < comest->stim * 3)
+            stim += comest->stim;
+    }
+
+    add_addiction(comest->add, comest->addict);
+    if (addiction_craving(comest->add) != MORALE_NULL)
+        rem_morale(addiction_craving(comest->add));
+
+    if (has_bionic("bio_ethanol") && comest->use == &iuse::alcohol)
+        charge_power(rng(2, 8));
+    if (has_bionic("bio_ethanol") && comest->use == &iuse::alcohol_weak)
+        charge_power(rng(1, 4));
+
+    if (eaten->made_of("hflesh")) {
+      if (has_trait("CANNIBAL")) {
+          g->add_msg_if_player(this, _("You feast upon the human flesh."));
+          add_morale(MORALE_CANNIBAL, 15, 100);
+      } else {
+          g->add_msg_if_player(this, _("You feel horrible for eating a person.."));
+          add_morale(MORALE_CANNIBAL, -60, -400, 600, 300);
+      }
+    }
+    if (has_trait("VEGETARIAN") && (eaten->made_of("flesh") || eaten->made_of("hflesh")))
+    {
+        g->add_msg_if_player(this,_("Almost instantly you feel a familiar pain in your stomach"));
+        add_morale(MORALE_VEGETARIAN, -75, -400, 300, 240);
+    }
+    if ((has_trait("HERBIVORE") || has_trait("RUMINANT")) &&
+            eaten->made_of("flesh"))
+    {
+        if (!one_in(3))
+            vomit(g);
+        if (comest->quench >= 2)
+            thirst += int(comest->quench / 2);
+        if (comest->nutr >= 2)
+            hunger += int(comest->nutr * .75);
+    }
+    if (eaten->has_flag("HOT") && eaten->has_flag("EATEN_HOT"))
+        add_morale(MORALE_FOOD_HOT, 5, 10);
+    if (has_trait("GOURMAND"))
+    {
+        if (comest->fun < -2)
+            add_morale(MORALE_FOOD_BAD, comest->fun * 2, comest->fun * 4, 60, 30, false, comest);
+        else if (comest->fun > 0)
+            add_morale(MORALE_FOOD_GOOD, comest->fun * 3, comest->fun * 6, 60, 30, false, comest);
+        if (hunger < -60 || thirst < -60)
+            g->add_msg_if_player(this,_("You can't finish it all!"));
+        if (hunger < -60)
+            hunger = -60;
+        if (thirst < -60)
+            thirst = -60;
+    }
+    else
+    {
+        if (comest->fun < 0)
+            add_morale(MORALE_FOOD_BAD, comest->fun * 2, comest->fun * 6, 60, 30, false, comest);
+        else if (comest->fun > 0)
+            add_morale(MORALE_FOOD_GOOD, comest->fun * 2, comest->fun * 4, 60, 30, false, comest);
+        if (hunger < -20 || thirst < -20)
+            g->add_msg_if_player(this,_("You can't finish it all!"));
+        if (hunger < -20)
+            hunger = -20;
+        if (thirst < -20)
+            thirst = -20;
     }
     return true;
 }
@@ -7675,7 +7739,8 @@ press 'U' while wielding the unloaded gun."), gun->tname(g).c_str());
  } else if (used->is_food() || used->is_food_container()) {
   if (replace_item)
    inv.add_item_keep_invlet(copy);
-  eat(g, lookup_item(let));
+//  eat(g, lookup_item(let));
+  consume(g, lookup_item(let));
   return;
  } else if (used->is_book()) {
   if (replace_item)
