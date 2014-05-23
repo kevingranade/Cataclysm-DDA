@@ -76,6 +76,7 @@ bool player_activity::is_suspendable() const
     case ACT_RELOAD:
     case ACT_DISASSEMBLE:
     case ACT_MAKE_ZLAVE:
+    case ACT_AIM:
         return false;
     default:
         return true;
