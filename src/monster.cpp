@@ -158,15 +158,16 @@ void monster::spawn(int x, int y)
     _posy = y;
 }
 
-std::string monster::name()
+std::string monster::name(unsigned int quantity)
 {
  if (!type) {
   debugmsg ("monster::name empty type!");
   return std::string();
  }
  if (unique_name != "")
-  return type->name + ": " + unique_name;
- return type->name;
+  return string_format("%s: %s",
+                       (type->nname(quantity).c_str()), unique_name.c_str());
+ return ngettext(type->name.c_str(), type->name_plural.c_str(), quantity);
 }
 
 // MATERIALS-TODO: put description in materials.json?
@@ -214,6 +215,10 @@ void monster::get_Attitude(nc_color &color, std::string &text)
             color = h_white;
             text = _("Friendly ");
             break;
+        case MATT_FPASSIVE:
+            color = h_white;
+            text = _("Passive ");
+            break;
         case MATT_FLEE:
             color = c_green;
             text = _("Fleeing! ");
@@ -248,7 +253,7 @@ int monster::print_info(WINDOW* w, int vStart, int vLines, int column)
 
  const int vEnd = vStart + vLines;
 
- mvwprintz(w, vStart++, column, c_white, "%s ", type->name.c_str());
+ mvwprintz(w, vStart++, column, c_white, "%s ", _(type->name.c_str()));
  nc_color color = c_white;
  std::string attitude = "";
 
@@ -471,8 +476,10 @@ bool monster::is_fleeing(player &u)
 
 monster_attitude monster::attitude(player *u)
 {
- if (friendly != 0)
+ if (friendly != 0 && !(has_effect("docile")))
   return MATT_FRIEND;
+ if (friendly != 0 )
+  return MATT_FPASSIVE;
  if (has_effect("run"))
   return MATT_FLEE;
 
@@ -812,10 +819,10 @@ void monster::melee_attack(Creature &target, bool, matec_id) {
     } else if (is_hallucination() || dealt_dam.total_damage() > 0) {
         if (target.is_player()) {
             if (u_see_me) {
-                add_msg(_("The %1$s hits your %2$s."), name().c_str(),
+                add_msg(m_bad, _("The %1$s hits your %2$s."), name().c_str(),
                         body_part_name(bp_hit, random_side(bp_hit)).c_str());
             } else {
-                add_msg(_("Something hits your %s."),
+                add_msg(m_bad, _("Something hits your %s."),
                         body_part_name(bp_hit, random_side(bp_hit)).c_str());
             }
         } else {
@@ -846,7 +853,7 @@ void monster::melee_attack(Creature &target, bool, matec_id) {
 
     if (is_hallucination()) {
         if(one_in(7)) {
-            die();
+            dead = true;
         }
         return;
     }
@@ -934,6 +941,12 @@ int monster::deal_projectile_attack(Creature *source, double missed_by,
         {
         (mdf.*type->sp_defense)(this, &proj);
         }
+
+    // whip has a chance to scare wildlife
+    if(proj.proj_effects.count("WHIP") && type->in_category("WILDLIFE") && one_in(3)) {
+            add_effect("run", rng(3, 5));
+    }
+
     return Creature::deal_projectile_attack(source, missed_by, proj, dealt_dam);
 }
 
@@ -1275,4 +1288,80 @@ void monster::setkeep(bool r)
 
 m_size monster::get_size() {
     return type->size;
+}
+
+void monster::add_msg_if_npc(const char *msg, ...)
+{
+    va_list ap;
+    va_start(ap, msg);
+    std::string processed_npc_string = vstring_format(msg, ap);
+    // These strings contain the substring <npcname>,
+    // if present replace it with the actual monster name.
+    size_t offset = processed_npc_string.find("<npcname>");
+    if (offset != std::string::npos) {
+        processed_npc_string.replace(offset, 9, disp_name());
+        if (offset == 0 && !processed_npc_string.empty()) {
+            capitalize_letter(processed_npc_string, 0);
+        }
+    }
+    add_msg(processed_npc_string.c_str());
+    va_end(ap);
+}
+
+void monster::add_msg_player_or_npc(const char *, const char* npc_str, ...)
+{
+    va_list ap;
+    va_start(ap, npc_str);
+    if (g->u_see(this)) {
+        std::string processed_npc_string = vstring_format(npc_str, ap);
+        // These strings contain the substring <npcname>,
+        // if present replace it with the actual monster name.
+        size_t offset = processed_npc_string.find("<npcname>");
+        if (offset != std::string::npos) {
+            processed_npc_string.replace(offset, 9, disp_name());
+            if (offset == 0 && !processed_npc_string.empty()) {
+                capitalize_letter(processed_npc_string, 0);
+            }
+        }
+        add_msg(processed_npc_string.c_str());
+    }
+    va_end(ap);
+}
+
+void monster::add_msg_if_npc(game_message_type type, const char *msg, ...)
+{
+    va_list ap;
+    va_start(ap, msg);
+    std::string processed_npc_string = vstring_format(msg, ap);
+    // These strings contain the substring <npcname>,
+    // if present replace it with the actual monster name.
+    size_t offset = processed_npc_string.find("<npcname>");
+    if (offset != std::string::npos) {
+        processed_npc_string.replace(offset, 9, disp_name());
+        if (offset == 0 && !processed_npc_string.empty()) {
+            capitalize_letter(processed_npc_string, 0);
+        }
+    }
+    add_msg(type, processed_npc_string.c_str());
+    va_end(ap);
+}
+
+void monster::add_msg_player_or_npc(game_message_type type, const char *, const char* npc_str, ...)
+{
+    va_list ap;
+    va_start(ap, npc_str);
+    if (g->u_see(this)) {
+        std::string processed_npc_string = vstring_format(npc_str, ap);
+        // These strings contain the substring <npcname>,
+        // if present replace it with the actual monster name.
+        size_t offset = processed_npc_string.find("<npcname>");
+        if (offset != std::string::npos) {
+            processed_npc_string.replace(offset, 9, disp_name());
+            if (offset == 0 && !processed_npc_string.empty()) {
+                capitalize_letter(processed_npc_string, 0);
+            }
+        }
+        add_msg(type, processed_npc_string.c_str());
+    }
+    va_end(ap);
 }

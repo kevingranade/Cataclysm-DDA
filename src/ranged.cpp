@@ -103,9 +103,11 @@ double Creature::projectile_attack(const projectile &proj, int sourcex, int sour
         if (critter != NULL && cur_missed_by <= 1.0) {
             dealt_damage_instance dealt_dam;
             critter->deal_projectile_attack(this, missed_by, proj, dealt_dam);
-            std::vector<point> blood_traj = trajectory;
-            blood_traj.insert(blood_traj.begin(), point(xpos(), ypos()));
-            splatter( blood_traj, dam, critter );
+            if (dealt_dam.total_damage() > 0) {
+                std::vector<point> blood_traj = trajectory;
+                blood_traj.insert(blood_traj.begin(), point(xpos(), ypos()));
+                splatter( blood_traj, dam, critter );
+            }
             dam = 0;
         } else if(in_veh != NULL && g->m.veh_at(tx, ty) == in_veh) {
             // Don't do anything, especially don't call map::shoot as this would damage the vehicle
@@ -131,7 +133,7 @@ double Creature::projectile_attack(const projectile &proj, int sourcex, int sour
     )
        )
     {
-        item ammotmp = item(curammo, 0);
+        item ammotmp = item(curammo->id, 0);
         ammotmp.charges = 1;
         g->m.add_item_or_charges(tx, ty, ammotmp);
     }
@@ -180,9 +182,9 @@ bool player::handle_gun_damage( it_gun *firing, std::set<std::string> *curammo_e
                                      weapon.name.c_str());
             if ((weapon.damage < 4) && one_in(4 * firing->durability)){
                 weapon.damage++;
-                add_msg_player_or_npc(_("Your %s is damaged by the mechanical malfunction!"),
-                                         _("<npcname>'s %s is damaged by the mechanical malfunction!"),
-                                         weapon.name.c_str());
+                add_msg_player_or_npc(m_bad, _("Your %s is damaged by the mechanical malfunction!"),
+                                             _("<npcname>'s %s is damaged by the mechanical malfunction!"),
+                                             weapon.name.c_str());
             }
             return false;
             // Here we check for a chance for the weapon to suffer a misfire due to
@@ -203,9 +205,9 @@ bool player::handle_gun_damage( it_gun *firing, std::set<std::string> *curammo_e
                                      weapon.name.c_str());
             if ((weapon.damage < 4) && one_in(firing->durability)){
                 weapon.damage++;
-                add_msg_player_or_npc(_("Your %s is damaged by the misfired round!"),
-                                         _("<npcname>'s %s is damaged by the misfired round!"),
-                                         weapon.name.c_str());
+                add_msg_player_or_npc(m_bad, _("Your %s is damaged by the misfired round!"),
+                                             _("<npcname>'s %s is damaged by the misfired round!"),
+                                             weapon.name.c_str());
             }
             return false;
         }
@@ -259,7 +261,7 @@ void player::fire_gun(int tarx, int tary, bool burst) {
         used_weapon = &weapon;
     }
 
-    ammotmp = item(curammo, 0);
+    ammotmp = item(curammo->id, 0);
     ammotmp.charges = 1;
 
     if (!used_weapon->is_gun() && !used_weapon->is_gunmod()) {
@@ -321,23 +323,28 @@ void player::fire_gun(int tarx, int tary, bool burst) {
 
     int ups_drain = 0;
     int adv_ups_drain = 0;
+    int bio_power_drain = 0;
     if (weapon.has_flag("USE_UPS")) {
         ups_drain = 5;
         adv_ups_drain = 3;
+        bio_power_drain = 1;
     } else if (weapon.has_flag("USE_UPS_20")) {
         ups_drain = 20;
         adv_ups_drain = 12;
+        bio_power_drain = 4;
     } else if (weapon.has_flag("USE_UPS_40")) {
         ups_drain = 40;
         adv_ups_drain = 24;
+        bio_power_drain = 8;
     }
 
     // cap our maximum burst size by the amount of UPS power left
-    if (ups_drain > 0 || adv_ups_drain > 0)
+    if (ups_drain > 0 || adv_ups_drain > 0 || bio_power_drain > 0)
     while (!(has_charges("UPS_off", ups_drain*num_shots) ||
                 has_charges("UPS_on", ups_drain*num_shots) ||
                 has_charges("adv_UPS_off", adv_ups_drain*num_shots) ||
-                has_charges("adv_UPS_on", adv_ups_drain*num_shots))) {
+                has_charges("adv_UPS_on", adv_ups_drain*num_shots) ||
+             (has_bionic("bio_ups") && power_level >= (bio_power_drain * num_shots)))) {
         num_shots--;
     }
 
@@ -351,9 +358,22 @@ void player::fire_gun(int tarx, int tary, bool burst) {
     // High perception allows you to pick out details better, low perception interferes.
     const bool train_skill = weapon_dispersion < player_dispersion + rng(0, get_per());
     if( train_skill ) {
-        practice(calendar::turn, skill_used, 4 + (num_shots / 2));
+        practice( skill_used, 4 + (num_shots / 2));
     } else if( one_in(30) ) {
-        add_msg_if_player(_("You'll need a more accurate gun to keep improving your aim."));
+        add_msg_if_player(m_info, _("You'll need a more accurate gun to keep improving your aim."));
+    }
+
+    // chance to disarm an NPC with a whip if skill is high enough
+    if(proj.proj_effects.count("WHIP") && (this->skillLevel("melee") > 5) && one_in(3)) {
+        int npcdex = g->npc_at(tarx, tary);
+        if(npcdex != -1) {
+            npc *p = g->active_npc[npcdex];
+            if(!p->weapon.is_null()) {
+                item weap = p->remove_weapon();
+                add_msg_if_player(m_good, "You disarm %s's %s using your whip!", p->name.c_str(), weap.name.c_str());
+                g->m.add_item_or_charges(tarx + rng(-1, 1), tary + rng(-1, 1), weap);
+            }
+        }
     }
 
     for (int curshot = 0; curshot < num_shots; curshot++) {
@@ -393,24 +413,32 @@ void player::fire_gun(int tarx, int tary, bool burst) {
 
         // Drop a shell casing if appropriate.
         itype_id casing_type = curammo->casing;
-        if (casing_type != "NULL" && !casing_type.empty()) {
-            item casing;
-            casing.make(itypes[casing_type]);
-            // Casing needs a charges of 1 to stack properly with other casings.
-            casing.charges = 1;
-            if( used_weapon->has_gunmod("brass_catcher") != -1 ) {
-                i_add( casing );
+        if( casing_type != "NULL" && !casing_type.empty() ) {
+            if( weapon.has_flag("RELOAD_EJECT") ) {
+                int num_casings = 0;
+                if( weapon.item_vars.count( "CASINGS" ) ) {
+                    num_casings = atoi( weapon.item_vars[ "CASINGS" ].c_str() );
+                }
+                weapon.item_vars[ "CASINGS" ] = string_format( "%d", num_casings + 1 );
             } else {
-                int x = 0;
-                int y = 0;
-                int count = 0;
-                do {
-                    x = xpos() - 1 + rng(0, 2);
-                    y = ypos() - 1 + rng(0, 2);
-                    count++;
-                    // Try not to drop the casing on a wall if at all possible.
-                } while( g->m.move_cost( x, y ) == 0 && count < 10 );
-                g->m.add_item_or_charges(x, y, casing);
+                item casing;
+                casing.make(casing_type);
+                // Casing needs a charges of 1 to stack properly with other casings.
+                casing.charges = 1;
+                if( used_weapon->has_gunmod("brass_catcher") != -1 ) {
+                    i_add( casing );
+                } else {
+                    int x = 0;
+                    int y = 0;
+                    int count = 0;
+                    do {
+                        x = xpos() - 1 + rng(0, 2);
+                        y = ypos() - 1 + rng(0, 2);
+                        count++;
+                        // Try not to drop the casing on a wall if at all possible.
+                    } while( g->m.move_cost( x, y ) == 0 && count < 10 );
+                    g->m.add_item_or_charges(x, y, casing);
+                }
             }
         }
 
@@ -442,6 +470,9 @@ void player::fire_gun(int tarx, int tary, bool burst) {
             use_charges("UPS_off", ups_drain);
         } else if (has_charges("UPS_on", ups_drain)) {
             use_charges("UPS_on", ups_drain);
+        }
+        else if (has_bionic("bio_ups")) {
+            charge_power(-1 * bio_power_drain);
         }
 
         if( !handle_gun_damage( firing, curammo_effects ) ) {
@@ -483,15 +514,15 @@ void player::fire_gun(int tarx, int tary, bool burst) {
         }
 
         if (!train_skill) {
-            practice(calendar::turn, skill_used, 0); // practice, but do not train
+            practice( skill_used, 0 ); // practice, but do not train
         } else if (missed_by <= .1) {
-            practice(calendar::turn, skill_used, 5);
+            practice( skill_used, 5 );
         } else if (missed_by <= .2) {
-            practice(calendar::turn, skill_used, 3);
+            practice( skill_used, 3 );
         } else if (missed_by <= .4) {
-            practice(calendar::turn, skill_used, 2);
+            practice( skill_used, 2 );
         } else if (missed_by <= .6) {
-            practice(calendar::turn, skill_used, 1);
+            practice( skill_used, 1 );
         }
 
     }
@@ -501,9 +532,9 @@ void player::fire_gun(int tarx, int tary, bool burst) {
     }
 
     if( train_skill ) {
-        practice(calendar::turn, "gun", 5);
+        practice( "gun", 5 );
     } else {
-        practice(calendar::turn, "gun", 0);
+        practice( "gun", 0 );
     }
 }
 
@@ -630,23 +661,39 @@ void game::throw_item(player &p, int tarx, int tary, item &thrown,
                 goodhit = double(double(rand() / RAND_MAX) / 2);
             }
 
+            game_message_type gmtSCTcolor = m_good;
+
             if (goodhit < .1 && !z.has_flag(MF_NOHEAD)) {
                 message = _("Headshot!");
+                gmtSCTcolor = m_headshot;
                 dam = rng(dam, dam * 3);
-                p.practice(calendar::turn, "throw", 5);
+                p.practice( "throw", 5 );
                 p.lifetime_stats()->headshots++;
             } else if (goodhit < .2) {
                 message = _("Critical!");
+                gmtSCTcolor = m_critical;
                 dam = rng(dam, dam * 2);
-                p.practice(calendar::turn, "throw", 2);
+                p.practice( "throw", 2 );
             } else if (goodhit < .4) {
                 dam = rng(int(dam / 2), int(dam * 1.5));
             } else if (goodhit < .5) {
                 message = _("Grazing hit.");
+                gmtSCTcolor = m_grazing;
                 dam = rng(0, dam);
             }
             if (u_see(tx, ty)) {
-                p.add_msg_player_or_npc(_("%s You hit the %s for %d damage."),
+                //player hits monster thrown
+                nc_color color;
+                std::string health_bar = "";
+                get_HP_Bar(dam, z.get_hp_max(), color, health_bar, true);
+
+                SCT.add(z.xpos(),
+                        z.ypos(),
+                        direction_from(0, 0, z.xpos() - p.posx, z.ypos() - p.posy),
+                        health_bar.c_str(), m_good,
+                        message, gmtSCTcolor);
+
+                p.add_msg_player_or_npc(m_good, _("%s You hit the %s for %d damage."),
                     _("%s <npcname> hits the %s for %d damage."),
                     message.c_str(), z.name().c_str(), dam);
             }
@@ -690,6 +737,13 @@ void game::throw_item(player &p, int tarx, int tary, item &thrown,
             sound(tx, ty, 8, _("thud."));
         }
         m.add_item_or_charges(tx, ty, thrown);
+        const trap_id trid = m.tr_at(tx, ty);
+        if (trid != tr_null) {
+            const struct trap *tr = traplist[trid];
+            if (thrown.weight() >= tr->trigger_weight) {
+                tr->trigger(NULL, tx, ty);
+            }
+        }
     }
 }
 
@@ -735,6 +789,8 @@ std::vector<point> game::target(int &x, int &y, int lowx, int lowy, int hix,
    if (relevent == &u.weapon && relevent->is_gun()) {
      if(relevent->has_flag("RELOAD_AND_SHOOT")) {
         wprintz(w_target, c_red, _("Shooting %s from %s"), u.weapon.curammo->name.c_str(), u.weapon.tname().c_str());
+;    } else if(relevent->has_flag("NO_AMMO")) {
+        wprintz(w_target, c_red, _("Firing %s"), u.weapon.tname().c_str());
      } else {
          wprintz(w_target, c_red, _("Firing %s (%d)"), // - %s (%d)",
                 u.weapon.tname().c_str(),// u.weapon.curammo->name.c_str(),
@@ -1027,8 +1083,12 @@ int time_to_fire(player &p, it_gun* firing)
      time = 30;
    else
      time = (200 - 20 * p.skillLevel("launcher"));
- }
-  else {
+ } else if(firing->skill_used == Skill::skill("melee")) { // right now, just whips
+    if (p.skillLevel("melee") > 8)
+        time = 50;
+    else
+        time = (200 - (20 * p.skillLevel("melee")));
+ } else {
    debugmsg("Why is shooting %s using %s skill?", (firing->name).c_str(), firing->skill_used->name().c_str());
    time =  0;
  }
@@ -1067,6 +1127,9 @@ void make_gun_sound_effect(player &p, bool burst, item* weapon)
   } else {
     gunsound = _("Kra-koom!!");
   }
+ } else if (weapontype->ammo_effects.count("WHIP")) {
+     noise = 20;
+     gunsound = _("Crack!");
  } else {
   if (noise < 5) {
    if (burst)

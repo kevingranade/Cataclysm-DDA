@@ -1,7 +1,6 @@
 #ifndef _GAME_H_
 #define _GAME_H_
 
-#include "platform.h"
 #include "mtype.h"
 #include "monster.h"
 #include "map.h"
@@ -19,40 +18,17 @@
 #include "construction.h"
 #include "calendar.h"
 #include "posix_time.h"
-#include "artifact.h"
 #include "mutation.h"
 #include "gamemode.h"
 #include "live_view.h"
 #include "worldfactory.h"
 #include "creature_tracker.h"
+#include "game_constants.h"
 #include <vector>
 #include <map>
 #include <queue>
 #include <list>
 #include <stdarg.h>
-
-// Fixed window sizes
-#define HP_HEIGHT 14
-#define HP_WIDTH 7
-#define MINIMAP_HEIGHT 7
-#define MINIMAP_WIDTH 7
-#define MONINFO_HEIGHT 12
-#define MONINFO_WIDTH 48
-#define MESSAGES_HEIGHT 8
-#define MESSAGES_WIDTH 48
-#define LOCATION_HEIGHT 1
-#define LOCATION_WIDTH 48
-#define STATUS_HEIGHT 4
-#define STATUS_WIDTH 55
-
-#define LONG_RANGE 10
-#define BLINK_SPEED 300
-#define BULLET_SPEED 10000000
-#define EXPLOSION_SPEED 70000000
-
-#define MAX_ITEM_IN_SQUARE 4096 // really just a sanity check for functions not tested beyond this. in theory 4096 works (`InvletInvlet)
-#define MAX_VOLUME_IN_SQUARE 4000 // 6.25 dead bears is enough for everybody!
-#define MAX_ITEM_IN_VEHICLE_STORAGE MAX_ITEM_IN_SQUARE // no reason to differ
 
 extern const int savegame_version;
 extern int save_loading_version;
@@ -142,14 +118,12 @@ public:
   bool save();
   void delete_world(std::string worldname, bool delete_folder);
   std::vector<std::string> list_active_characters();
-  void write_memorial_file();
+  void write_memorial_file(std::string sLastWords);
   void cleanup_at_end();
   bool do_turn();
   void draw();
   void draw_ter(int posx = -999, int posy = -999);
   void draw_veh_dir_indicator(void);
-  void advance_nextinv(); // Increment the next inventory letter
-  void decrease_nextinv(); // Decrement the next inventory letter
   void add_event(event_type type, int on_turn, int faction_id = -1,
                  int x = -1, int y = -1);
   bool event_queued(event_type type);
@@ -159,6 +133,9 @@ public:
   void add_footstep(int x, int y, int volume, int distance, monster* source);
   std::vector<std::vector<point> > footsteps;
   std::vector<monster*> footsteps_source;
+// Calculate where footstep marker should appear and put those points into the result.
+// It also clears @ref footsteps_source and @ref footsteps
+  void calculate_footstep_markers(std::vector<point> &result);
 // visual cue to monsters moving out of the players sight
   void draw_footsteps();
 // Explosion at (x, y) of intensity (power), with (shrapnel) chunks of shrapnel
@@ -275,7 +252,7 @@ public:
   void process_artifact(item *it, player *p, bool wielded = false);
   void add_artifact_messages(std::vector<art_effect_passive> effects);
 
-  void peek();
+  void peek( int peekx = 0, int peeky = 0);
   point look_debug();
   point look_around();// Look at nearby terrain ';'
   int list_items(const int iLastState); //List all items around the player
@@ -356,7 +333,6 @@ public:
   bool lightning_active;
 
   std::map<int, weather_segment> weather_log;
-  char nextinv; // Determines which letter the next inv item will have
   overmap *cur_om;
   map m;
   int levx, levy, levz; // Placement inside the overmap
@@ -428,10 +404,11 @@ public:
   void draw_explosion(int x, int y, int radius, nc_color col);
   void draw_bullet(Creature &p, int tx, int ty, int i, std::vector<point> trajectory, char bullet, timespec &ts);
   void draw_hit_mon(int x, int y, monster critter, bool dead = false);
-  void draw_hit_player(player *p, bool dead = false);
+  void draw_hit_player(player *p, const int iDam, bool dead = false);
   void draw_line(const int x, const int y, const point center_point, std::vector<point> ret);
   void draw_line(const int x, const int y, std::vector<point> ret);
   void draw_weather(weather_printable wPrint);
+  void draw_sct();
 
 // Vehicle related JSON loaders and variables
   void load_vehiclepart(JsonObject &jo);
@@ -451,6 +428,8 @@ public:
   bool narrow_sidebar;
   bool fullscreen;
   bool was_fullscreen;
+  void write_msg();        // Prints the messages in the messages list
+  void exam_vehicle(vehicle &veh, int examx, int examy, int cx=0, int cy=0);  // open vehicle interaction screen
 
  private:
 // Game-start procedures
@@ -481,6 +460,7 @@ public:
   void init_npctalk();
   void init_fields();
   void init_weather();
+  void init_weather_anim();
   void init_morale();
   void init_itypes();       // Initializes item types
   void init_skills() throw (std::string);
@@ -555,9 +535,7 @@ public:
   void control_vehicle(); // Use vehicle controls  '^'
   void examine(int examx = -1, int examy = -1);// Examine nearby terrain  'e'
   void advanced_inv();
-  // open vehicle interaction screen
-  void exam_vehicle(vehicle &veh, int examx, int examy, int cx=0, int cy=0);
-  void pickup(int posx, int posy, int min);// Pickup items; ',' or via examine()
+
   // Establish a grab on something.
   void grab();
 // Pick where to put liquid; false if it's left where it was
@@ -599,6 +577,7 @@ public:
   void handle_multi_item_info(int lx, int ly, WINDOW* w_look, const int column, int &line, bool mouse_hover);
   void get_lookaround_dimensions(int &lookWidth, int &begin_y, int &begin_x) const;
 
+
   input_context get_player_input(std::string &action);
 // Target is an interactive function which allows the player to choose a nearby
 // square.  It display information on any monster/NPC on that square, and also
@@ -637,7 +616,6 @@ public:
   void place_corpse();     // Place player corpse
   void death_screen();     // Display our stats, "GAME OVER BOO HOO"
   void gameover();         // Ends the game
-  void write_msg();        // Prints the messages in the messages list
   void msg_buffer();       // Opens a window with old messages in it
   void draw_minimap();     // Draw the 5x5 minimap
   void draw_HP();          // Draws the player's HP and Power level
@@ -686,7 +664,6 @@ public:
   std::vector<event> events;         // Game events to be processed
   std::map<std::string, int> kills;         // Player's kill count
   int moves_since_last_save;
-  int item_exchanges_since_save;
   time_t last_save_timestamp;
   unsigned char latest_lightlevel;
   calendar latest_lightlevel_turn;
@@ -706,6 +683,7 @@ public:
   bool is_hostile_within(int distance);
     void activity_on_turn();
     void activity_on_turn_game();
+    void activity_on_turn_vibe();
     void activity_on_turn_refill_vehicle();
     void activity_on_turn_pulp();
     void activity_on_finish();
@@ -716,10 +694,6 @@ public:
     void activity_on_finish_fish();
     void activity_on_finish_vehicle();
 
-  // game::pickup helper functions
-  int handle_quiver_insertion(item &here, bool inv_on_fail, int &moves_to_decrement, bool &picked_up);
-  void remove_from_map_or_vehicle(int posx, int posy, bool from_veh, vehicle *veh, int cargo_part, int &moves_taken, int curmit);
-  void show_pickup_message(std::map<std::string, int> mapPickup);
 };
 
 #endif

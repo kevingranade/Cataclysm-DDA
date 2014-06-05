@@ -52,7 +52,7 @@ cata_tiles::cata_tiles(SDL_Renderer *render)
     do_draw_hit = false;
     do_draw_line = false;
     do_draw_weather = false;
-    do_draw_footsteps = false;
+    do_draw_sct = false;
 
     boomered = false;
     sight_impaired = false;
@@ -551,7 +551,8 @@ void cata_tiles::draw(int destx, int desty, int centerx, int centery, int width,
             draw_entity(x, y);
         }
     }
-    in_animation = do_draw_explosion || do_draw_bullet || do_draw_hit || do_draw_line || do_draw_weather || do_draw_footsteps;
+    in_animation = do_draw_explosion || do_draw_bullet || do_draw_hit || do_draw_line || do_draw_weather || do_draw_sct;
+    draw_footsteps_frame();
     if (in_animation) {
         if (do_draw_explosion) {
             draw_explosion_frame();
@@ -571,9 +572,9 @@ void cata_tiles::draw(int destx, int desty, int centerx, int centery, int width,
             draw_weather_frame();
             void_weather();
         }
-        if (do_draw_footsteps) {
-            draw_footsteps_frame();
-            void_footsteps();
+        if (do_draw_sct) {
+            draw_sct_frame();
+            void_sct();
         }
     }
     // check to see if player is located at ter
@@ -661,11 +662,9 @@ bool cata_tiles::draw_from_id_string(const std::string &id, TILE_CATEGORY catego
                 col = t->color;
             }
         } else if (category == C_ITEM) {
-            if (item_controller->has_template(id)) {
-                const itype *i = item_controller->find_template(id);
-                sym = i->sym;
-                col = i->color;
-            }
+            const itype *i = item_controller->find_template(id);
+            sym = i->sym;
+            col = i->color;
         }
         // Special cases for walls
         switch(sym) {
@@ -918,6 +917,9 @@ bool cata_tiles::draw_trap(int x, int y)
     if (tr_id == tr_null) {
         return false;
     }
+    if (!traplist[tr_id]->can_see(g->u, x, y)) {
+        return false;
+    }
 
     const std::string tr_name = traplist[tr_id]->id;
 
@@ -1068,7 +1070,7 @@ bool cata_tiles::draw_entity(int x, int y)
         if (!m.dead) {
             ent_name = m.type->id;
             ent_category = C_MONSTER;
-            if(m.type->species.size() >= 1) {
+            if(!(m.type->species.empty())) {
                 ent_subcategory = *(m.type->species.begin());
             }
             entity_here = true;
@@ -1173,10 +1175,9 @@ void cata_tiles::init_draw_weather(weather_printable weather, std::string name)
     weather_name = name;
     anim_weather = weather;
 }
-void cata_tiles::init_draw_footsteps(std::queue<point> steps)
+void cata_tiles::init_draw_sct()
 {
-    do_draw_footsteps = true;
-    footsteps = steps;
+    do_draw_sct = true;
 }
 /* -- Void Animators */
 void cata_tiles::void_explosion()
@@ -1215,9 +1216,9 @@ void cata_tiles::void_weather()
     weather_name = "";
     anim_weather.vdrops.clear();
 }
-void cata_tiles::void_footsteps()
+void cata_tiles::void_sct()
 {
-    do_draw_footsteps = false;
+    do_draw_sct = false;
 }
 /* -- Animation Renders */
 void cata_tiles::draw_explosion_frame()
@@ -1286,21 +1287,43 @@ void cata_tiles::draw_weather_frame()
         // currently in ascii screen coordinates
         int x = weather_iterator->first + o_x;
         int y = weather_iterator->second + o_y;
-
         draw_from_id_string(weather_name, C_WEATHER, empty_string, x, y, 0, 0);
+    }
+}
+void cata_tiles::draw_sct_frame()
+{
+    for (std::vector<scrollingcombattext::cSCT>::iterator iter = SCT.vSCT.begin(); iter != SCT.vSCT.end(); ++iter) {
+        const int iDX = iter->getPosX();
+        const int iDY = iter->getPosY();
+
+        int iOffsetX = 0;
+
+        for (int j=0; j < 2; ++j) {
+            std::string sText = iter->getText((j == 0) ? "first" : "second");
+            int FG = msgtype_to_tilecolor(iter->getMsgType((j == 0) ? "first" : "second"), (iter->getStep() >= SCT.iMaxSteps/2));
+
+            for (int i=0; i < sText.size(); ++i) {
+                std::string generic_id("ASCII_XFB");
+                generic_id[6] = static_cast<char>(sText[i]);
+                generic_id[7] = static_cast<char>(FG);
+                generic_id[8] = static_cast<char>(-1);
+
+                if (tile_ids.count(generic_id) > 0) {
+                    draw_from_id_string(generic_id, C_NONE, empty_string, iDX + iOffsetX, iDY, 0, 0);
+                }
+
+                iOffsetX++;
+            }
+        }
     }
 }
 void cata_tiles::draw_footsteps_frame()
 {
-    const std::string footstep_tilestring = "footstep";
-    while (!footsteps.empty()) {
-        point p = footsteps.front();
-        footsteps.pop();
-
-        int x = p.x;
-        int y = p.y;
-
-        draw_from_id_string(footstep_tilestring, x, y, 0, 0);
+    static const std::string footstep_tilestring = "footstep";
+    std::vector<point> markers;
+    g->calculate_footstep_markers(markers);
+    for (std::vector<point>::const_iterator a = markers.begin(); a != markers.end(); ++a) {
+        draw_from_id_string(footstep_tilestring, a->x, a->y, 0, 0);
     }
 }
 /* END OF ANIMATION FUNCTIONS */
@@ -1328,9 +1351,7 @@ LIGHTING cata_tiles::light_at(int x, int y)
     const int dist = rl_dist(g->u.posx, g->u.posy, x, y);
 
     int real_max_sight_range = sightrange_light > sightrange_max ? sightrange_light : sightrange_max;
-    int distance_to_look = real_max_sight_range;
-
-    distance_to_look = DAYLIGHT_LEVEL;
+    int distance_to_look = DAYLIGHT_LEVEL;
 
     bool can_see = g->m.pl_sees(g->u.posx, g->u.posy, x, y, distance_to_look);
     lit_level lit = g->m.light_at(x, y);

@@ -7,12 +7,14 @@
 #include "trap.h"
 #include "morale.h"
 #include "inventory.h"
-#include "artifact.h"
 #include "mutation.h"
 #include "crafting.h"
 #include "vehicle.h"
 #include "martialarts.h"
 #include "player_activity.h"
+#include "messages.h"
+
+#include <unordered_set>
 
 class monster;
 class game;
@@ -84,7 +86,7 @@ public:
 // newcharacter.cpp
  bool create(character_type type, std::string tempname = "");
  /** Returns the set "my_traits" */
- std::set<std::string> get_traits() const;
+ std::unordered_set<std::string> get_traits() const;
  /** Returns the id of a random starting trait that costs >= 0 points */
  std::string random_good_trait();
  /** Returns the id of a random starting trait that costs < 0 points */
@@ -132,7 +134,7 @@ public:
     virtual void serialize(JsonOut &jsout, bool save_contents) const;
 
  /** Prints out the player's memorial file */
- void memorial( std::ofstream &memorial_file );
+ void memorial( std::ofstream &memorial_file, std::string epitaph );
  /** Handles and displays detailed character info for the '@' screen */
  void disp_info();
  /** Provides the window and detailed morale data */
@@ -263,7 +265,7 @@ public:
  /** Returns the player maximum vision range factoring in mutations, diseases, and other effects */
  int  unimpaired_range();
  /** Returns true if overmap tile is within player line-of-sight */
- bool overmap_los(int x, int y);
+ bool overmap_los(int x, int y, int sight_points);
  /** Returns the distance the player can see on the overmap */
  int  overmap_sight_range(int light_level);
  /** Returns the distance the player can see through walls */
@@ -279,7 +281,7 @@ public:
  /** True if unarmed or wielding a weapon with the UNARMED_WEAPON flag */
  bool unarmed_attack();
  /** Called when a player triggers a trap, returns true if they don't set it off */
- bool avoid_trap(trap *tr);
+ bool avoid_trap(trap *tr, int x, int y);
 
  /** Returns true if the player has some form of night vision */
  bool has_nv();
@@ -651,8 +653,8 @@ public:
  bool is_wearing_power_armor(bool *hasHelmet = NULL) const;
 
  int adjust_for_focus(int amount);
- void practice(const calendar& turn, Skill *s, int amount, int cap = 99);
- void practice(const calendar& turn, std::string s, int amount);
+ void practice( Skill *s, int amount, int cap = 99 );
+ void practice( std::string s, int amount, int cap = 99 );
 
  void assign_activity(activity_type type, int moves, int index = -1, int pos = INT_MIN, std::string name = "");
  bool has_activity(const activity_type type);
@@ -857,6 +859,7 @@ public:
     //Record of player stats, for posterity only
     stats* lifetime_stats();
     stats get_stats() const; // for serialization
+    void mod_stat( std::string stat, int modifier );
 
  int getID () const;
 
@@ -874,19 +877,26 @@ public:
 
  m_size get_size();
  int get_hp( hp_part bp );
+ int get_hp_max( hp_part bp );
 
  field_id playerBloodType();
 
  //message related stuff
  virtual void add_msg_if_player(const char* msg, ...);
+ virtual void add_msg_if_player(game_message_type type, const char* msg, ...);
  virtual void add_msg_player_or_npc(const char* player_str, const char* npc_str, ...);
+ virtual void add_msg_player_or_npc(game_message_type type, const char* player_str, const char* npc_str, ...);
 
+    typedef std::map<tripoint, std::string> trap_map;
+    bool knows_trap(int x, int y) const;
+    void add_known_trap(int x, int y, const std::string &t);
 protected:
-    std::set<std::string> my_traits;
-    std::set<std::string> my_mutations;
+    std::unordered_set<std::string> my_traits;
+    std::unordered_set<std::string> my_mutations;
     std::vector<bionic> my_bionics;
     std::vector<disease> illness;
     bool underwater;
+    trap_map known_traps;
 
     int sight_max;
     int sight_boost;
@@ -902,6 +912,9 @@ private:
 
     bool has_fire(const int quantity);
     void use_fire(const int quantity);
+
+    /** Search surroundings squares for traps while pausing a turn. */
+    void search_surroundings();
 
     std::vector<point> auto_move_route;
     // Used to make sure auto move is canceled if we stumble off course

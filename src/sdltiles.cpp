@@ -220,12 +220,13 @@ bool WinCreate()
 {
     std::string version = string_format("Cataclysm: Dark Days Ahead - %s", getVersionString());
 
-    //Flags used for setting up SDL VideoMode
+    // Common flags used for fulscreen and for windowed
     int window_flags = 0;
+    WindowWidth = TERMINAL_WIDTH * fontwidth;
+    WindowHeight = TERMINAL_HEIGHT * fontheight;
 
-    //If FULLSCREEN was selected in options add SDL_WINDOW_FULLSCREEN flag to screen_flags, causing screen to go fullscreen.
-    if(OPTIONS["FULLSCREEN"]) {
-        window_flags = window_flags | SDL_WINDOW_FULLSCREEN;
+    if (OPTIONS["FULLSCREEN"]) {
+        window_flags |= SDL_WINDOW_FULLSCREEN;
     }
 
     window = SDL_CreateWindow(version.c_str(),
@@ -236,9 +237,15 @@ bool WinCreate()
             window_flags
         );
 
-	//create renderer and convert that to a SDL_Surface?
-
-    if (window == NULL) return false;
+    if (window == NULL) {
+        return false;
+    }
+    if (window_flags & SDL_WINDOW_FULLSCREEN) {
+        SDL_GetWindowSize(window, &WindowWidth, &WindowHeight);
+        // Ignore previous values, use the whole window, but nothing more.
+        TERMINAL_WIDTH = WindowWidth / fontwidth;
+        TERMINAL_HEIGHT = WindowHeight / fontheight;
+    }
 
     format = SDL_AllocFormat(SDL_GetWindowPixelFormat(window));
 
@@ -264,9 +271,7 @@ bool WinCreate()
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
     display_buffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, WindowWidth, WindowHeight);
     SDL_SetRenderTarget(renderer, display_buffer);
-
     ClearScreen();
-    SDL_SetRenderTarget(renderer, display_buffer);
 
     if(OPTIONS["HIDE_CURSOR"] != "show" && SDL_ShowCursor(-1)) {
         SDL_ShowCursor(SDL_DISABLE);
@@ -555,8 +560,8 @@ void curses_drawwindow(WINDOW *win)
             win->y * fontheight,
             g->ter_view_x,
             g->ter_view_y,
-            win->width * tilecontext->get_tile_width(),
-            win->height * tilecontext->get_tile_height());
+            TERRAIN_WINDOW_TERM_WIDTH * font->fontwidth,
+            TERRAIN_WINDOW_TERM_HEIGHT * font->fontheight);
         update = true;
     } else if (g && win == g->w_terrain && map_font != NULL) {
         // Special font for the terrain window
@@ -1109,10 +1114,7 @@ static int test_face_size(std::string f, int size, int faceIndex)
 // Calculates the new width of the window, given the number of columns.
 int projected_window_width(int)
 {
-    int newWindowWidth = OPTIONS["TERMINAL_X"];
-    newWindowWidth = newWindowWidth < FULL_SCREEN_WIDTH ? FULL_SCREEN_WIDTH : newWindowWidth;
-
-    return newWindowWidth * fontwidth;
+    return OPTIONS["TERMINAL_X"] * fontwidth;
 }
 
 // Calculates the new height of the window, given the number of rows.
@@ -1130,64 +1132,13 @@ WINDOW *curses_init(void)
     lastchar = -1;
     inputdelay = -1;
 
-    std::string typeface = "Terminus";
-    std::string blending = "solid";
-    std::ifstream fin;
-    bool legacy_fontdata_loaded = false;
-    int fontsize = 0; //actuall size
-    fin.open(FILENAMES["fontdata"].c_str());
-    if (!fin.is_open()){
-        fin.open(FILENAMES["legacy_fontdata"].c_str());
-        if( !fin.is_open() ) {
-            fontwidth = 8;
-            fontheight = 16;
-            assure_dir_exist(FILENAMES["config_dir"]);
-            std::ofstream fout;//create FONDATA file
-            fout.open(FILENAMES["fontdata"].c_str());
-            if(fout.is_open()) {
-                fout << typeface << "\n";
-                fout << fontwidth << "\n";
-                fout << fontheight;
-                fout.close();
-            }
-        } else {
-            legacy_fontdata_loaded = true;
-        }
-    }
-    if( fin.is_open() ) {
-        getline(fin, typeface);
-        fin >> fontwidth;
-        fin >> fontheight;
-        fin >> fontsize;
-        fin >> blending;
-        if ((fontwidth <= 4) || (fontheight <= 4)) {
-            fontheight = 16;
-            fontwidth = 8;
-        }
-        fin.close();
-    }
-
-    if( legacy_fontdata_loaded ) {
-        // Write FONDATA file to new location.
-        assure_dir_exist(FILENAMES["config_dir"]);
-        std::ofstream fout;
-        fout.open(FILENAMES["fontdata"].c_str());
-        if(fout.is_open()) {
-            fout << typeface << "\n";
-            fout << fontwidth << "\n";
-            fout << fontheight;
-            fout.close();
-        }
-    }
-
-    fontblending = (blending=="blended");
-
-    std::string map_typeface = typeface;
-    int map_fontwidth = fontwidth;
-    int map_fontheight = fontheight;
-    int map_fontsize = fontsize;
-
-    std::ifstream jsonstream(FILENAMES["second_fontdata"].c_str(), std::ifstream::binary);
+    std::string typeface, map_typeface;
+    int fontsize = 8;
+    int map_fontwidth = 8;
+    int map_fontheight = 16;
+    int map_fontsize = 8;
+ 
+    std::ifstream jsonstream(FILENAMES["fontdata"].c_str(), std::ifstream::binary);
     if (jsonstream.good()) {
         JsonIn json(jsonstream);
         JsonObject config = json.get_object();
@@ -1200,6 +1151,50 @@ WINDOW *curses_init(void)
         map_fontheight = config.get_int("map_fontheight", fontheight);
         map_fontsize = config.get_int("map_fontsize", fontsize);
         map_typeface = config.get_string("map_typeface", typeface);
+        jsonstream.close();
+    } else { // User fontdata is missed. Try to load legacy fontdata.
+        std::ifstream InStream(FILENAMES["legacy_fontdata"].c_str(), std::ifstream::binary);
+        if(InStream.good()) {
+            JsonIn jIn(InStream);
+            JsonObject config = jIn.get_object();
+            fontblending = config.get_bool("fontblending", fontblending);
+            fontwidth = config.get_int("fontwidth", fontwidth);
+            fontheight = config.get_int("fontheight", fontheight);
+            fontsize = config.get_int("fontsize", fontsize);
+            typeface = config.get_string("typeface", typeface);
+            map_fontwidth = config.get_int("map_fontwidth", fontwidth);
+            map_fontheight = config.get_int("map_fontheight", fontheight);
+            map_fontsize = config.get_int("map_fontsize", fontsize);
+            map_typeface = config.get_string("map_typeface", typeface);
+            InStream.close();
+            // Save legacy as user fontdata.
+            assure_dir_exist(FILENAMES["config_dir"]);
+            std::ofstream OutStream(FILENAMES["fontdata"].c_str(), std::ofstream::binary);
+            if(!OutStream.good()) {
+                DebugLog() << "Can't save user fontdata file.\n"
+                << "Check permissions for: " << FILENAMES["fontdata"].c_str();
+                return NULL;
+            }
+            JsonOut jOut(OutStream, true); // pretty-print
+            jOut.start_object();
+            jOut.member("fontblending", fontblending);
+            jOut.member("fontwidth", fontwidth);
+            jOut.member("fontheight", fontheight);
+            jOut.member("fontsize", fontsize);
+            jOut.member("typeface", typeface);
+            jOut.member("map_fontwidth", map_fontwidth);
+            jOut.member("map_fontheight", map_fontheight);
+            jOut.member("map_fontsize", map_fontsize);
+            jOut.member("map_typeface", map_typeface);
+            jOut.end_object();
+            OutStream << "\n";
+            OutStream.close();
+        } else {
+            DebugLog() << "Can't load fontdata files.\n"
+            << "Check permissions for:\n" << FILENAMES["legacy_fontdata"].c_str() << "\n"
+            << FILENAMES["fontdata"].c_str() << "\n";
+            return NULL;
+        }
     }
 
     if(!InitSDL()) {
@@ -1209,23 +1204,6 @@ WINDOW *curses_init(void)
 
     TERMINAL_WIDTH = OPTIONS["TERMINAL_X"];
     TERMINAL_HEIGHT = OPTIONS["TERMINAL_Y"];
-
-    if(OPTIONS["FULLSCREEN"]) {
-        // Fullscreen mode overrides terminal width/height
-        SDL_DisplayMode display_mode;
-        SDL_GetDesktopDisplayMode(0, &display_mode);
-
-        TERMINAL_WIDTH = display_mode.w / fontwidth;
-        TERMINAL_HEIGHT = display_mode.h / fontheight;
-
-        WindowWidth  = display_mode.w;
-        WindowHeight = display_mode.h;
-    } else {
-        WindowWidth= OPTIONS["TERMINAL_X"];
-        if (WindowWidth < FULL_SCREEN_WIDTH) WindowWidth = FULL_SCREEN_WIDTH;
-        WindowWidth *= fontwidth;
-        WindowHeight = OPTIONS["TERMINAL_Y"] * fontheight;
-    }
 
     if(!WinCreate()) {
         DebugLog() << "Failed to create game window: " << SDL_GetError() << "\n";
@@ -1751,14 +1729,14 @@ int map_font_height() {
     return (map_font != NULL ? map_font : font)->fontheight;
 }
 
-void translate_terrain_window_size(int &w, int &h) {
+void to_map_font_dimension(int &w, int &h) {
     w = (w * fontwidth) / map_font_width();
     h = (h * fontheight) / map_font_height();
 }
 
-void translate_terrain_window_size_back(int &w, int &h) {
-    w = (w * map_font_width()) / fontwidth;
-    h = (h * map_font_height()) / fontheight;
+void from_map_font_dimension(int &w, int &h) {
+    w = (w * map_font_width() + fontwidth - 1) / fontwidth;
+    h = (h * map_font_height() + fontheight - 1) / fontheight;
 }
 
 bool is_draw_tiles_mode() {
