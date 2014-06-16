@@ -370,6 +370,8 @@ struct it_gun : public virtual itype {
     int pierce;
     int range;
     int dispersion;
+    int sight_dispersion;
+    int aim_speed;
     int recoil;
     int durability;
     int burst;
@@ -389,14 +391,21 @@ struct it_gun : public virtual itype {
     }
 
     it_gun() : itype(), skill_used(NULL), dmg_bonus(0), pierce(0), range(0), dispersion(0),
-        recoil(0), durability(0), burst(0), clip(0), reload_time(0), ammo_effects(),
-        valid_mod_locations()
+        sight_dispersion(0), aim_speed(0), recoil(0), durability(0), burst(0), clip(0),
+        reload_time(0), ammo_effects(), valid_mod_locations()
     {
     }
 };
 
 struct it_gunmod : public virtual itype {
-    signed int dispersion, damage, loudness, clip, recoil, burst;
+    int dispersion;
+    int sight_dispersion;
+    int aim_speed;
+    int damage;
+    int loudness;
+    int clip;
+    int recoil;
+    int burst;
     ammotype newtype;
     std::set<std::string> acceptible_ammo_types;
     bool used_on_pistol;
@@ -414,9 +423,10 @@ struct it_gunmod : public virtual itype {
         return true;
     }
 
-    it_gunmod() : itype(), dispersion(0), damage(0), loudness(0), clip(0), recoil(0), burst(0),
-        newtype(), acceptible_ammo_types(), used_on_pistol(false), used_on_shotgun(false),
-        used_on_smg(false), used_on_rifle(false), used_on_bow(false), used_on_crossbow(false),
+    it_gunmod() : itype(), dispersion(0), sight_dispersion(0), aim_speed(0), damage(0),
+        loudness(0), clip(0), recoil(0), burst(0), newtype(), acceptible_ammo_types(),
+        used_on_pistol(false), used_on_shotgun(false), used_on_smg(false),
+        used_on_rifle(false), used_on_bow(false), used_on_crossbow(false),
         used_on_launcher(false), skill_used(NULL), location()
     {
     }
