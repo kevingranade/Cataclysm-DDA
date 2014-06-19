@@ -10150,17 +10150,15 @@ float player::fine_detail_vision_mod()
     return vision_ii;
 }
 
-int player::warmth(body_part bp) const
+int player::warmth( body_part bp ) const
 {
     int bodywetness = 0;
     int ret = 0, warmth = 0;
     const it_armor* armor = NULL;
 
     // Fetch the morale value of wetness for bodywetness
-    for (auto &i : morale)
-    {
-        if( i.type == MORALE_WET )
-        {
+    for (auto &i : morale) {
+        if( i.type == MORALE_WET ) {
             bodywetness = abs(i.bonus); // Make it positive, less confusing
             break;
         }
@@ -10168,27 +10166,23 @@ int player::warmth(body_part bp) const
 
     // If the player is not wielding anything, check if hands can be put in pockets
     if((bp == bp_hand_l || bp == bp_hand_r) && !is_armed() && (temp_conv[bp] <=  BODYTEMP_COLD) &&
-        worn_with_flag("POCKETS"))
-    {
+        worn_with_flag("POCKETS")) {
         ret += 10;
     }
 
     // If the players head is not encumbered, check if hood can be put up
-    if(bp == bp_head && encumb(bp_head) < 1 && (temp_conv[bp] <=  BODYTEMP_COLD) && worn_with_flag("HOOD"))
-    {
+    if(bp == bp_head && encumb(bp_head) < 1 &&
+       (temp_conv[bp] <=  BODYTEMP_COLD) && worn_with_flag("HOOD")) {
         ret += 10;
     }
 
-    for (auto &i : worn)
-    {
+    for (auto &i : worn) {
         armor = dynamic_cast<const it_armor*>(i.type);
 
-        if (i.covers.test(bp))
-        {
+        if (i.covers.test(bp)) {
             warmth = armor->warmth;
             // Wool items do not lose their warmth in the rain
-            if (!i.made_of("wool"))
-            {
+            if (!i.made_of("wool")) {
                 warmth *= 1.0 - (float)bodywetness / 100.0;
             }
             ret += warmth;
@@ -10197,7 +10191,7 @@ int player::warmth(body_part bp) const
     return ret;
 }
 
-int player::encumb(body_part bp) const
+int player::encumb( body_part bp ) const
 {
     int iArmorEnc = 0;
     double iLayers = 0;
