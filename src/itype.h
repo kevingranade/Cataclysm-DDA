@@ -399,6 +399,7 @@ struct it_gun : public virtual itype {
 
 struct it_gunmod : public virtual itype {
     int dispersion;
+    int mod_dispersion;
     int sight_dispersion;
     int aim_speed;
     int damage;
@@ -423,8 +424,8 @@ struct it_gunmod : public virtual itype {
         return true;
     }
 
-    it_gunmod() : itype(), dispersion(0), sight_dispersion(0), aim_speed(0), damage(0),
-        loudness(0), clip(0), recoil(0), burst(0), newtype(), acceptible_ammo_types(),
+    it_gunmod() : itype(), dispersion(0), mod_dispersion(0), sight_dispersion(0), aim_speed(0),
+        damage(0), loudness(0), clip(0), recoil(0), burst(0), newtype(), acceptible_ammo_types(),
         used_on_pistol(false), used_on_shotgun(false), used_on_smg(false),
         used_on_rifle(false), used_on_bow(false), used_on_crossbow(false),
         used_on_launcher(false), skill_used(NULL), location()
