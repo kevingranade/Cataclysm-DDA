@@ -87,28 +87,29 @@ void NameGenerator::load_names( JsonIn &jsin )
     }
 }
 
-std::vector<std::string> NameGenerator::filteredNames( uint32_t searchFlags )
+std::vector<std::vector<Name>::const_iterator>
+NameGenerator::filteredNames( uint32_t searchFlags ) const
 {
-    std::vector<std::string> retval;
+    std::vector<std::vector<Name>::const_iterator> retval;
 
-    for( std::vector<Name>::const_iterator aName = names.begin(); aName != names.end(); ++aName ) {
+    for( std::vector<Name>::const_iterator aName = names.cbegin(); aName != names.cend(); ++aName ) {
         if( (aName->flags() & searchFlags) == searchFlags ) {
-            retval.push_back(aName->value());
+            retval.push_back(aName);
         }
     }
     return retval;
 }
 
-std::string NameGenerator::getName( uint32_t searchFlags )
+std::string NameGenerator::getName( uint32_t searchFlags ) const
 {
-    std::vector<std::string> theseNames = filteredNames( searchFlags );
+    std::vector<std::vector<Name>::const_iterator> theseNames = filteredNames( searchFlags );
     if( theseNames.empty() ) {
         return std::string( _("Tom") );
     }
-    return theseNames[ rng( 0, theseNames.size() - 1 ) ];
+    return theseNames[ rng( 0, theseNames.size() - 1 ) ]->value();
 }
 
-std::string NameGenerator::generateName( bool male )
+std::string NameGenerator::generateName( bool male ) const
 {
     uint32_t baseSearchFlags = male ? nameIsMaleName : nameIsFemaleName;
     //One in four chance to pull from the backer list, otherwise generate a name from the parts list
@@ -159,7 +160,7 @@ void load_names_from_file( const std::string &filename )
 
     NameGenerator &gen = NameGenerator::generator();
 
-    std::istringstream iss( std::string( std::istreambuf_iterator<char>(data_file),
+    std::istringstream iss( std::string( (std::istreambuf_iterator<char>(data_file)),
                                          std::istreambuf_iterator<char>() ) );
     JsonIn jsin( iss );
     data_file.close();

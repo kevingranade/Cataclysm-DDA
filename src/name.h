@@ -38,11 +38,11 @@ class Name
             return _flags;
         }
 
-        bool isFirstName();
-        bool isLastName();
+        bool isFirstName() const;
+        bool isLastName() const;
 
-        bool isMaleName();
-        bool isFemaleName();
+        bool isMaleName() const;
+        bool isFemaleName() const;
     private:
         std::string _value;
         uint32_t _flags;
@@ -60,16 +60,16 @@ class NameGenerator
 
         void load_names( JsonIn &jsin );
 
-        std::string generateName( bool male );
+        std::string generateName( bool male ) const;
 
-        std::vector<std::string> filteredNames( uint32_t searchFlags );
-        std::string getName( uint32_t searchFlags );
+        std::string getName( uint32_t searchFlags ) const;
         void clear_names();
     private:
         NameGenerator();
 
         NameGenerator( NameGenerator const &);
         void operator=( NameGenerator const &);
+        std::vector<std::vector<Name>::const_iterator> filteredNames( uint32_t searchFlags ) const;
 
         std::vector<Name> names;
 };
