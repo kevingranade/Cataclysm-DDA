@@ -49,7 +49,7 @@ class NameGenerator {
     return generator;
   }
 
-  void load_name(JsonObject &jo);
+  void load_names(JsonIn &jsin);
 
   std::string generateName(bool male);
 

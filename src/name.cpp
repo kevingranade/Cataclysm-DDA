@@ -7,6 +7,7 @@
 #include "output.h"
 #include "translations.h"
 #include "rng.h"
+#include "debug.h"
 
 NameGenerator::NameGenerator() {
 
@@ -17,49 +18,72 @@ void NameGenerator::clear_names()
     names.clear();
 }
 
-void NameGenerator::load_name(JsonObject &jo)
+void NameGenerator::load_names(JsonIn &jsin)
 {
-    std::string name = jo.get_string("name");
-    std::string usage = jo.get_string("usage");
-    uint32_t flags = 0;
+    // load em all
+    jsin.start_array();
+    while( !jsin.end_array() ) {
+        std::string name;
+        std::string usage;
+        uint32_t flags = 0;
 
-    if (usage == "given") {
-        flags |= nameIsGivenName;
-        name = pgettext("Given Name", name.c_str());
-    } else if (usage == "family") {
-        flags |= nameIsFamilyName;
-        name = pgettext("Family Name", name.c_str());
-    } else if (usage == "universal") {
-        flags |= nameIsGivenName | nameIsFamilyName;
-        name = pgettext("Either Name", name.c_str());
-    } else if (usage == "backer") {
-        flags |= nameIsFullName;
-        name = pgettext("Full Name", name.c_str());
-    } else if (usage == "city") {
-        flags |= nameIsTownName;
-        name = pgettext("City Name", name.c_str());
-    } else if (usage == "world") {
-        flags |= nameIsWorldName;
-        name = pgettext("World Name", name.c_str());
-    }
-
-    // Gender is optional
-    if(jo.has_member("gender"))
-    {
-        std::string gender = jo.get_string("gender");
-
-        if (gender == "male") {
-            flags |= nameIsMaleName;
-        } else if (gender == "female") {
-            flags |= nameIsFemaleName;
-        } else if (gender == "unisex") {
-            flags |= nameIsUnisexName;
+        jsin.start_object();
+        while( !jsin.end_object() ) {
+            std::string member_name = jsin.get_member_name();
+            if( member_name == "name" ) {
+                name = jsin.get_string();
+            } else if( member_name == "usage" ) {
+                usage = jsin.get_string();
+            } else if( member_name == "gender" ) {
+                std::string gender = jsin.get_string();
+                if (gender == "male" ) {
+                    flags |= nameIsMaleName;
+                } else if( gender == "female" ) {
+                    flags |= nameIsFemaleName;
+                } else if( gender == "unisex" ) {
+                    flags |= nameIsUnisexName;
+                }
+            } else {
+                dout(D_ERROR) << "Unrecognized tag " << member_name << " in names file.";
+            }
         }
+
+        if( name.empty() || usage.empty() ) {
+            if( name.empty() && usage.empty() ) {
+                dout(D_ERROR) << "Missing name and usage in name/<locale>.json.";
+            } else if ( name.empty() ){
+                dout(D_ERROR) << "Missing name in name/<locale>.json.";
+            } else if ( name.empty() ){
+                dout(D_ERROR) << "Missing usage in name/<locale>.json.";
+            }
+            // If we didn't successfully extract a name, skip this entry.
+            continue;
+        }
+
+        if( usage == "given" ) {
+            flags |= nameIsGivenName;
+            name = pgettext( "Given Name", name.c_str() );
+        } else if( usage == "family" ) {
+            flags |= nameIsFamilyName;
+            name = pgettext( "Family Name", name.c_str() );
+        } else if( usage == "universal" ) {
+            flags |= nameIsGivenName | nameIsFamilyName;
+            name = pgettext( "Either Name", name.c_str() );
+        } else if( usage == "backer" ) {
+            flags |= nameIsFullName;
+            name = pgettext( "Full Name", name.c_str() );
+        } else if( usage == "city" ) {
+            flags |= nameIsTownName;
+            name = pgettext( "City Name", name.c_str() );
+        } else if( usage == "world" ) {
+            flags |= nameIsWorldName;
+            name = pgettext( "World Name", name.c_str() );
+        }
+
+        Name aName( name, flags );
+
+        names.push_back( aName );
     }
-
-    Name aName(name, flags);
-
-    names.push_back(aName);
 }
 
 std::vector<std::string> NameGenerator::filteredNames(uint32_t searchFlags) {
@@ -136,11 +160,6 @@ void load_names_from_file(const std::string &filename)
     JsonIn jsin(iss);
     data_file.close();
 
-    // load em all
-    jsin.start_array();
-    while (!jsin.end_array()) {
-        JsonObject json_name = jsin.get_object();
-        gen.load_name(json_name);
-    }
+    gen.load_names(jsin);
 }
 
