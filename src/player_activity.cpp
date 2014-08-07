@@ -45,7 +45,7 @@ const std::string &player_activity::get_stop_phrase() const
         _(" Stop waiting?"), _(" Stop using first aid?"),
         _(" Stop fishing?"), _(" Stop mining?"),
         _(" Stop smashing?"), _(" Stop de-stressing?"),
-        _(" Stop cutting tissues?")
+        _(" Stop cutting tissues?"), _(" Stop aiming?")
     };
     return stop_phrase[type];
 }
