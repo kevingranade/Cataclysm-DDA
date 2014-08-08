@@ -10942,7 +10942,7 @@ void game::plthrow(int pos)
     int y = u.posy;
 
     // pl_target_ui() sets x and y, or returns empty vector if we canceled (by pressing Esc)
-    std::vector <point> trajectory = pl_target_ui(x, y, range, &thrown);
+    std::vector <point> trajectory = pl_target_ui(x, y, range, &thrown, TARGET_MODE_THROW);
     if (trajectory.empty()) {
         return;
     }
@@ -10991,7 +10991,7 @@ bool compare_by_dist_to_u(Creature *a, Creature *b)
            rl_dist(b->xpos(), b->ypos(), g->u.posx, g->u.posy);
 }
 
-std::vector<point> game::pl_target_ui(int &x, int &y, int range, item *relevant,
+std::vector<point> game::pl_target_ui(int &x, int &y, int range, item *relevant, target_mode mode,
                                       int default_target_x, int default_target_y)
 {
     // Populate a list of targets with the zombies in range and visible
@@ -11033,7 +11033,7 @@ std::vector<point> game::pl_target_ui(int &x, int &y, int range, item *relevant,
     // target() sets x and y, and returns an empty vector if we canceled (Esc)
     std::vector <point> trajectory = target(x, y, u.posx - range, u.posy - range,
                                             u.posx + range, u.posy + range,
-                                            mon_targets, passtarget, relevant);
+                                            mon_targets, passtarget, relevant, mode);
 
     if (passtarget != -1) { // We picked a real live target
         // Make it our default for next time
@@ -11275,8 +11275,8 @@ void game::plfire(bool burst, int default_target_x, int default_target_y)
     int x = u.posx;
     int y = u.posy;
 
-    std::vector<point> trajectory = pl_target_ui(x, y, range, &u.weapon, default_target_x,
-                                    default_target_y);
+    std::vector<point> trajectory = pl_target_ui(x, y, range, &u.weapon, TARGET_MODE_FIRE,
+                                                 default_target_x, default_target_y);
 
     if (trajectory.empty()) {
         if (u.weapon.has_flag("RELOAD_AND_SHOOT")) {
