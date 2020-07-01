@@ -567,7 +567,7 @@ int item_contents::ammo_consume( int qty, const tripoint &pos )
         if( pocket.is_type( item_pocket::pocket_type::MAGAZINE_WELL ) ) {
             // we are assuming only one magazine per well
             if( pocket.empty() ) {
-                return 0;
+                continue;
             }
             // assuming only one mag
             item &mag = pocket.front();
