@@ -99,6 +99,8 @@ static bool needupdate = false;
 SDL_Texture_Ptr alt_rect_tex = nullptr;
 bool alt_rect_tex_enabled = false;
 
+template class color_loader<SDL_Color>;
+
 std::array<SDL_Color, color_loader<SDL_Color>::COLOR_NAMES_COUNT> windowsPalette;
 
 /**
