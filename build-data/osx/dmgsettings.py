@@ -16,7 +16,7 @@ appname = os.path.basename(application)
 
 def icon_from_app(app_path):
     plist_path = os.path.join(app_path, 'Contents', 'Info.plist')
-    plist = biplist.load(plist_path)
+    plist = biplist.readPlist(plist_path)
     icon_name = plist['CFBundleIconFile']
     icon_root, icon_ext = os.path.splitext(icon_name)
     if not icon_ext:
