@@ -54,6 +54,7 @@ TEST_CASE( "default_overmap_generation_always_succeeds", "[slow]" )
             break;
         }
     }
+    overmap_buffer.clear();
 }
 
 TEST_CASE( "default_overmap_generation_has_non_mandatory_specials_at_origin", "[slow]" )
